@@ -1,0 +1,55 @@
+{
+  "entities": {
+    "ChatDigest": {
+      "title": "ChatDigest",
+      "description": "Metadata and high-level analytical metrics for a WhatsApp parsed chat log.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique digest ID" },
+        "fileName": { "type": "string", "description": "Original chat log file name" },
+        "fileSize": { "type": "number", "description": "Original text file size in bytes" },
+        "parsedAt": { "type": "number", "description": "Epoch timestamp when the log was parsed" },
+        "startDateStr": { "type": "string", "description": "First date in the chat timeline" },
+        "endDateStr": { "type": "string", "description": "Last date in the chat timeline" },
+        "summary": { "type": "string", "description": "AI-generated executive narrative summary" }
+      },
+      "required": ["id", "fileName", "parsedAt"]
+    },
+    "MessageChunk": {
+      "title": "MessageChunk",
+      "description": "A chunk of parsed chat messages stored sequentially to abide by Firestore limits.",
+      "type": "object",
+      "properties": {
+        "chunkIndex": { "type": "number" },
+        "messages": { "type": "array" }
+      },
+      "required": ["chunkIndex", "messages"]
+    },
+    "ZipAttachment": {
+      "title": "ZipAttachment",
+      "description": "A media file attachment stored in base64 format.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "mimeType": { "type": "string" },
+        "base64": { "type": "string" },
+        "size": { "type": "number" }
+      },
+      "required": ["name", "mimeType", "base64"]
+    }
+  },
+  "firestore": {
+    "users/{userId}/digests/{digestId}": {
+      "schema": "ChatDigest",
+      "description": "Metadata, analytics, and summary roadmap details."
+    },
+    "users/{userId}/digests/{digestId}/messages/{chunkId}": {
+      "schema": "MessageChunk",
+      "description": "Chunked raw chronological message structures."
+    },
+    "users/{userId}/digests/{digestId}/attachments/{attachmentId}": {
+      "schema": "ZipAttachment",
+      "description": "Decompressed rich media files in base64."
+    }
+  }
+}

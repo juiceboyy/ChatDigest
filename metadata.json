@@ -1,0 +1,6 @@
+{
+  "name": "ChatDigest",
+  "description": "A completely offline, local Progressive Web App (PWA) utility to parse, summarize, and extract actionable decisions and assignments from exported WhatsApp chat files securely on your browser.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
