@@ -302,3 +302,217 @@ export function exportDigestToPdf(digest: ChatDigestData): void {
   // Trigger download
   doc.save(`ChatDigest_${digest.fileName.split('.')[0] || 'Report'}.pdf`);
 }
+
+export function exportPlaybookToPdf(digest: ChatDigestData): void {
+  if (!digest.playbook) return;
+
+  const doc = new jsPDF({
+    orientation: 'p',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 20;
+  const contentWidth = pageWidth - (margin * 2);
+
+  let y = 20;
+
+  // Helper helper to handle page wrap
+  const checkPageWrap = (neededHeight: number) => {
+    if (y + neededHeight > pageHeight - margin) {
+      doc.addPage();
+      y = 20;
+      drawHeaderBadge();
+    }
+  };
+
+  const drawHeaderBadge = () => {
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(110, 120, 135);
+    doc.text('CHATDIGEST • PROJECT OPERATIONAL PLAYBOOK', margin, 12);
+    doc.setDrawColor(220, 225, 230);
+    doc.setLineWidth(0.2);
+    doc.line(margin, 14, pageWidth - margin, 14);
+  };
+
+  // Initial Running Header
+  drawHeaderBadge();
+
+  // Primary Title
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(22);
+  doc.setTextColor(79, 70, 229); // Indigo-600
+  doc.text('Project Operational Playbook', margin, y + 8);
+  y += 14;
+
+  // Subtitle/Metadata Badge
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(100, 110, 125);
+  doc.text(`Source Chat: ${digest.fileName} (${formatBytes(digest.fileSize)})`, margin, y);
+  doc.text(`Compiled on: ${new Date(digest.playbook.generatedAt || digest.parsedAt).toLocaleDateString()}`, margin, y + 5);
+  doc.text(`Timeline scope: ${digest.startDateStr} — ${digest.endDateStr}`, margin, y + 10);
+  y += 18;
+
+  // Separator Line
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.5);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 8;
+
+  // Playbook Overview
+  if (digest.playbook.overview) {
+    const cleanOverview = digest.playbook.overview.replace(/\*\*/g, '');
+    const splitOverview = doc.splitTextToSize(cleanOverview, contentWidth);
+    checkPageWrap((splitOverview.length * 5) + 15);
+
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(30, 41, 59);
+    doc.text('Strategic Blueprint Overview', margin, y);
+    y += 6;
+
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(71, 85, 105); // slate-600
+    doc.text(splitOverview, margin, y);
+    y += (splitOverview.length * 5) + 10;
+  }
+
+  // Playbook Chapters
+  const plays = digest.playbook.plays || [];
+  if (plays.length === 0) {
+    checkPageWrap(15);
+    doc.setFont('Helvetica', 'italic');
+    doc.setFontSize(10);
+    doc.setTextColor(148, 163, 184);
+    doc.text('No operational plays defined.', margin, y);
+    y += 8;
+  } else {
+    plays.forEach((play, index) => {
+      // Conservative wrap check for the play title first
+      checkPageWrap(35);
+
+      // Play Chapter Header
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(13);
+      doc.setTextColor(79, 70, 229); // indigo-600
+      const categoryText = play.category ? `[${play.category.toUpperCase()}] ` : '';
+      doc.text(`${index + 1}. ${categoryText}${play.title}`, margin, y);
+      y += 6;
+
+      // Play Description / Rationale
+      if (play.description) {
+        const cleanDesc = play.description.replace(/\*\*/g, '');
+        const splitDesc = doc.splitTextToSize(cleanDesc, contentWidth - 10);
+        const descHeight = (splitDesc.length * 4.5) + 6;
+        
+        checkPageWrap(descHeight);
+
+        // Draw left accent line
+        doc.setDrawColor(99, 102, 241); // Indigo border
+        doc.setLineWidth(0.6);
+        doc.line(margin + 2, y - 2, margin + 2, y + descHeight - 6);
+
+        doc.setFont('Helvetica', 'italic');
+        doc.setFontSize(9.5);
+        doc.setTextColor(71, 85, 105); // slate-600
+        
+        doc.text(splitDesc, margin + 6, y + 2);
+        y += descHeight;
+      }
+
+      // Execution Steps Checkpoints
+      if (play.steps && play.steps.length > 0) {
+        checkPageWrap(15);
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(30, 41, 59); // slate-800
+        doc.text('Sequence Execution Steps Checkpoints', margin, y);
+        y += 5.5;
+
+        play.steps.forEach((step, sidx) => {
+          const stepText = step.replace(/\*\*/g, '');
+          const stepLines = doc.splitTextToSize(stepText, contentWidth - 10);
+          const stepHeight = (stepLines.length * 4.5) + 2.5;
+
+          checkPageWrap(stepHeight);
+
+          // Render step number
+          doc.setFont('Helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.setTextColor(79, 70, 229);
+          doc.text(`${sidx + 1}`, margin + 2, y + 1);
+
+          doc.setFont('Helvetica', 'normal');
+          doc.setFontSize(9.5);
+          doc.setTextColor(51, 65, 85);
+          doc.text(stepLines, margin + 8, y + 1);
+          y += stepHeight;
+        });
+        y += 3;
+      }
+
+      // Strategic Advice / Tips
+      if (play.tips && play.tips.length > 0) {
+        checkPageWrap(15);
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(30, 41, 59);
+        doc.text('Strategic Architecture Runbook Advice', margin, y);
+        y += 5.5;
+
+        play.tips.forEach((tip) => {
+          const tipText = tip.replace(/\*\*/g, '');
+          const tipLines = doc.splitTextToSize(tipText, contentWidth - 14);
+          const tipHeight = (tipLines.length * 4.5) + 6;
+
+          checkPageWrap(tipHeight);
+
+          // Draw a soft background box for the tip
+          doc.setDrawColor(241, 245, 249);
+          doc.setFillColor(248, 250, 252);
+          doc.rect(margin + 2, y - 2, contentWidth - 4, tipHeight - 2, 'FD');
+
+          // Draw a bullet symbol
+          doc.setFont('Helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.setTextColor(245, 158, 11); // Amber for sparkles/tips
+          doc.text('•', margin + 5, y + 2.5);
+
+          // Draw tip text
+          doc.setFont('Helvetica', 'normal');
+          doc.setFontSize(9);
+          doc.setTextColor(71, 85, 105);
+          doc.text(tipLines, margin + 9, y + 2.5);
+          y += tipHeight;
+        });
+        y += 3;
+      }
+
+      // Separator between plays
+      if (index < plays.length - 1) {
+        checkPageWrap(10);
+        doc.setDrawColor(241, 245, 249);
+        doc.setLineWidth(0.3);
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 8;
+      }
+    });
+  }
+
+  // Footer Signature
+  checkPageWrap(20);
+  y = pageHeight - 15;
+  doc.setFont('Helvetica', 'italic');
+  doc.setFontSize(8);
+  doc.setTextColor(148, 163, 184);
+  doc.text('Playbook compiled completely client-side. ChatDigest protects your conversations.', margin, y);
+
+  // Trigger download
+  const safeTitle = digest.fileName.split('.')[0] || 'Playbook';
+  doc.save(`Operational_Playbook_${safeTitle}.pdf`);
+}

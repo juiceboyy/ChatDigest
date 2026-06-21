@@ -7,7 +7,7 @@ import {
   BookOpen, Bookmark
 } from 'lucide-react';
 import { ChatDigestData, ChatDecision, ActionItem, TimelineDataPoint, PlaybookPlay, PlaybookData } from '../types';
-import { exportDigestToPdf } from '../lib/pdfExporter';
+import { exportDigestToPdf, exportPlaybookToPdf } from '../lib/pdfExporter';
 import ConfirmationModal from './ConfirmationModal';
 
 interface DashboardProps {
@@ -812,6 +812,10 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
     exportDigestToPdf(digest);
   };
 
+  const handleExportPlaybookPDF = () => {
+    exportPlaybookToPdf(digest);
+  };
+
   // Build points for a gorgeous custom SVG trend path
   const svgSparklinePoints = useMemo(() => {
     const list = digest.timeline;
@@ -1012,6 +1016,15 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
           <div className="flex flex-wrap items-center gap-2">
             {digest.playbook ? (
               <>
+                <button
+                  type="button"
+                  onClick={handleExportPlaybookPDF}
+                  className="px-3 py-1.5 text-xs font-medium text-gray-300 hover:text-white bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-all flex items-center gap-1.5 cursor-pointer"
+                  title="Export Playbook as PDF"
+                >
+                  <Download className="w-3.5 h-3.5 text-indigo-400" />
+                  Export PDF
+                </button>
                 <button
                   type="button"
                   onClick={handleAddPlay}
