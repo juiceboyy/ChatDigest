@@ -1,6 +1,5 @@
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 
@@ -67,9 +66,8 @@ async function generateContentWithRetry(
   throw new Error(`All generation engines in the fallback sequence are temporarily busy. Please try again shortly.`);
 }
 
-async function startServer() {
+export async function createExpressApp() {
   const app = express();
-  const PORT = 3000;
 
   // Set body parser with high limit for large chat text
   app.use(express.json({ limit: "25mb" }));
@@ -704,8 +702,16 @@ Generate the complete Operational Playbook now.`;
     }
   });
 
+  return app;
+}
+
+async function startServer() {
+  const app = await createExpressApp();
+  const PORT = 3000;
+
   // Enable Vite middleware in development
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -724,4 +730,6 @@ Generate the complete Operational Playbook now.`;
   });
 }
 
-startServer();
+if (!process.env.NETLIFY && !process.env.LAMBDA_TASK_ROOT) {
+  startServer();
+}
