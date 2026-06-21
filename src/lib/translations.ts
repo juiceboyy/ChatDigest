@@ -144,7 +144,19 @@ export const translations = {
     updateDigestDesc: "Upload the latest WhatsApp export file to identify new messages and append them to this digest.",
     noNewMessages: "No new messages found. This digest is already up to date!",
     newMessagesFound: "Found {count} new messages. Merging and updating...",
-    mergingAndResynthesizing: "Merging & Re-Synthesizing with Gemini..."
+    mergingAndResynthesizing: "Merging & Re-Synthesizing with Gemini...",
+    videoWizardTitle: "Video & Screenshot Import Wizard",
+    videoWizardDesc: "Extracting frames and processing your chat with Gemini",
+    extractingFrames: "Extracting frames from video...",
+    extractingProgress: "Captured frame {current} of {total}...",
+    reviewFramesTitle: "Review Chat Frames",
+    reviewFramesDesc: "Gemini will read these images in sequence. Remove any blurry or completely duplicate frames to save tokens and improve accuracy.",
+    btnProcessChat: "Process Chat with Gemini",
+    processingChatMedia: "Gemini is reconstructing chat logs...",
+    processingChatMediaDesc: "Running OCR, sorting messages chronologically, and deduplicating overlapping segments. This takes about 10-15 seconds.",
+    fpsLabel: "Frame Capture Rate (fps)",
+    customInstructions: "Custom Context / Focus Instructions (Optional)",
+    btnBack: "Back"
   },
   nl: {
     // App
@@ -289,7 +301,19 @@ export const translations = {
     updateDigestDesc: "Upload het nieuwste WhatsApp-exportbestand om nieuwe berichten te identificeren en aan deze digest toe te voegen.",
     noNewMessages: "Geen nieuwe berichten gevonden. Deze digest is al up-to-date!",
     newMessagesFound: "{count} nieuwe berichten gevonden. Samenvoegen en bijwerken...",
-    mergingAndResynthesizing: "Samenvoegen & Opnieuw Synthetiseren met Gemini..."
+    mergingAndResynthesizing: "Samenvoegen & Opnieuw Synthetiseren met Gemini...",
+    videoWizardTitle: "Video & Screenshot Import Wizard",
+    videoWizardDesc: "Frames extraheren en je chat verwerken met Gemini",
+    extractingFrames: "Frames uit video extraheren...",
+    extractingProgress: "Frame {current} van {total} vastgelegd...",
+    reviewFramesTitle: "Chat-frames Controleren",
+    reviewFramesDesc: "Gemini leest deze afbeeldingen in chronologische volgorde. Verwijder wazige of volledig dubbele frames om tokens te besparen en de nauwkeurigheid te verhogen.",
+    btnProcessChat: "Chat Verwerken met Gemini",
+    processingChatMedia: "Gemini is chatlogboeken aan het reconstrueren...",
+    processingChatMediaDesc: "OCR uitvoeren, berichten chronologisch sorteren en overlappende segmenten ontdubbelen. Dit duurt ongeveer 10-15 seconden.",
+    fpsLabel: "Frame-opnamesnelheid (fps)",
+    customInstructions: "Aangepaste Context / Instructies (Optioneel)",
+    btnBack: "Terug"
   }
 };
 

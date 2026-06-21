@@ -8,6 +8,7 @@ import contradictionsRouter from "./src/server/routes/contradictions";
 import execSummaryRouter from "./src/server/routes/execSummary";
 import playbookRouter from "./src/server/routes/playbook";
 import translateRouter from "./src/server/routes/translate";
+import digestMediaRouter from "./src/server/routes/digestMedia";
 
 dotenv.config({ path: ".env.local" });
 dotenv.config();
@@ -41,6 +42,7 @@ export async function createExpressApp() {
   app.use("/api", execSummaryRouter);
   app.use("/api", playbookRouter);
   app.use("/api", translateRouter);
+  app.use("/api", digestMediaRouter);
 
   return app;
 }
