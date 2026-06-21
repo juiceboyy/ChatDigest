@@ -3,12 +3,14 @@ import { Upload, FileText, AlertCircle, Sparkles } from 'lucide-react';
 import JSZip from 'jszip';
 import { parseWhatsAppFile } from '../parser';
 import { ChatDigestData } from '../types';
+import { Language, getTranslation } from '../lib/translations';
 
 interface UploadZoneProps {
   onParsed: (data: ChatDigestData) => void;
+  language: Language;
 }
 
-export default function UploadZone({ onParsed }: UploadZoneProps) {
+export default function UploadZone({ onParsed, language }: UploadZoneProps) {
   const [isDragActive, setIsDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
@@ -29,7 +31,7 @@ export default function UploadZone({ onParsed }: UploadZoneProps) {
 
     const isZip = file.name.endsWith('.zip') || file.type === 'application/zip' || file.type === 'application/x-zip-compressed';
     if (!file.name.endsWith('.txt') && !isZip) {
-      setError('Unsupported file type. Please upload a standard WhatsApp export .txt file or a WhatsApp export with media ZIP archive.');
+      setError(getTranslation('unsupportedFile', language));
       return;
     }
 
@@ -40,7 +42,7 @@ export default function UploadZone({ onParsed }: UploadZoneProps) {
       try {
         const parsedData = parseWhatsAppFile(text, name, size);
         if (parsedData.messages.length === 0) {
-          setError('Could not identify any valid WhatsApp message structures in this file. Please make sure this is a WhatsApp export with timestamps.');
+          setError(getTranslation('noValidMessages', language));
           setParsing(false);
           return;
         }
@@ -61,12 +63,13 @@ export default function UploadZone({ onParsed }: UploadZoneProps) {
             fileName: name,
             fileSize: size,
             messages: slicedMessagesForDigest,
+            language: language,
           }),
         });
 
         if (!response.ok) {
           const errData = await response.json();
-          throw new Error(errData.error || 'Server failed to analyze log with Gemini');
+          throw new Error(errData.error || getTranslation('serverFailed', language));
         }
 
         const geminiDigest = await response.json();
@@ -94,7 +97,7 @@ export default function UploadZone({ onParsed }: UploadZoneProps) {
 
         onParsed(finalData);
       } catch (err: any) {
-        setError(`Gemini Parsing Error: ${err.message || 'Unknown processing error.'}. Please make sure your GEMINI_API_KEY is active under Settings > Secrets.`);
+        setError(`${getTranslation('parsingError', language)}: ${err.message || 'Unknown processing error.'}`);
       } finally {
         setParsing(false);
       }
@@ -176,7 +179,7 @@ export default function UploadZone({ onParsed }: UploadZoneProps) {
 
         await handleParsedTextFlow(rawText, chatFileName, file.size, zipAttachments);
       } catch (err: any) {
-        setError(`ZIP file analysis error: ${err.message}`);
+        setError(`${getTranslation('zipError', language)}: ${err.message}`);
         setParsing(false);
       }
     } else {
@@ -185,14 +188,14 @@ export default function UploadZone({ onParsed }: UploadZoneProps) {
         reader.onload = async (e) => {
           const text = e.target?.result as string;
           if (!text) {
-            setError('The text file appears to be empty.');
+            setError(getTranslation('emptyFile', language));
             setParsing(false);
             return;
           }
           await handleParsedTextFlow(text, file.name, file.size);
         };
         reader.onerror = () => {
-          setError('Failed to read the file locally.');
+          setError(getTranslation('failedReadLocal', language));
           setParsing(false);
         };
         reader.readAsText(file, 'utf-8');
@@ -253,9 +256,9 @@ export default function UploadZone({ onParsed }: UploadZoneProps) {
               <Sparkles className="w-12 h-12 animate-spin" />
             </div>
             <div>
-              <h3 className="text-xl font-semibold text-white">Synthesizing with Gemini AI...</h3>
+              <h3 className="text-xl font-semibold text-white">{getTranslation('synthesizingGemini', language)}</h3>
               <p className="text-sm text-gray-400 mt-2 max-w-md mx-auto leading-relaxed">
-                Determining meeting topics, tracking participant sentiment, mapping key consensus agreements, and extracting follow-up action items privately via Gemini.
+                {getTranslation('synthesizingDesc', language)}
               </p>
             </div>
           </div>
@@ -266,15 +269,15 @@ export default function UploadZone({ onParsed }: UploadZoneProps) {
             </div>
 
             <div>
-              <h3 className="text-lg font-medium text-white">Assemble WhatsApp Digest</h3>
+              <h3 className="text-lg font-medium text-white">{getTranslation('assembleDigest', language)}</h3>
               <p className="text-sm text-gray-400 mt-2 max-w-md mx-auto leading-relaxed">
-                Drag and drop your exported WhatsApp <span className="text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded font-mono border border-blue-500/20 text-xs text-nowrap">.txt</span> file or <span className="text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded font-mono border border-blue-500/20 text-xs text-nowrap">.zip</span> media archive here, or click to browse.
+                {getTranslation('dragDropText', language)}
               </p>
             </div>
 
             <div className="text-xs text-gray-500 inline-flex items-center gap-1.5 bg-white/3 py-1.5 px-3 rounded border border-white/5">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-              Private Processing — Private, server-side log analysis using Gemini 3.5 Flash
+              {getTranslation('privateProcessing', language)}
             </div>
           </div>
         )}
@@ -284,7 +287,7 @@ export default function UploadZone({ onParsed }: UploadZoneProps) {
         <div id="upload-error" className="mt-4 p-4 rounded-xl bg-rose-950/20 border border-rose-900/40 flex items-start gap-3 text-rose-300 shadow-sm animate-fadeIn text-sm">
           <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-rose-400" />
           <div className="space-y-1">
-            <p className="font-semibold text-rose-200">Invalid File Attempt</p>
+            <p className="font-semibold text-rose-200">{getTranslation('invalidAttempt', language)}</p>
             <p className="leading-relaxed font-light">{error}</p>
           </div>
         </div>
@@ -293,13 +296,13 @@ export default function UploadZone({ onParsed }: UploadZoneProps) {
       <div className="mt-8 p-5 bg-[#121212] rounded-xl border border-white/5 text-left" id="whatsapp-tutorial">
         <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2 mb-3">
           <FileText className="w-3.5 h-3.5 text-blue-400" />
-          How do I export my WhatsApp logs?
+          {getTranslation('howExport', language)}
         </h4>
         <ol className="list-decimal list-inside space-y-2 text-xs text-gray-500 leading-relaxed font-light">
-          <li>Open the WhatsApp thread on your device.</li>
-          <li>Tap the participant display or settings bar at the top, then choose <b className="text-gray-300 font-medium">Export Chat</b>.</li>
-          <li>Select <b className="text-gray-300 font-medium">"Attach Media"</b> to generate a complete <b className="text-gray-300 font-medium">.zip</b> archive containing the raw text log and files list, or <b className="text-gray-300 font-medium">"Without Media"</b> for a simple text file.</li>
-          <li>Import the resulting <b className="text-gray-300 font-medium">.txt</b> or <b className="text-gray-300 font-medium">.zip</b> file directly here to begin parsing.</li>
+          <li>{getTranslation('step1', language)}</li>
+          <li>{getTranslation('step2', language)}</li>
+          <li>{getTranslation('step3', language)}</li>
+          <li>{getTranslation('step4', language)}</li>
         </ol>
       </div>
     </div>

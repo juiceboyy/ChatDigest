@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Plus, History, MessageSquare, ShieldAlert, CheckCircle2, Cloud,
   Cpu, FileCode, CheckSquare, RefreshCw, Layers, LogIn, LogOut, ShieldCheck, User as UserIcon,
@@ -20,11 +20,22 @@ import UploadZone from './components/UploadZone';
 import HistorySidebar from './components/HistorySidebar';
 import Dashboard from './components/Dashboard';
 import ConfirmationModal from './components/ConfirmationModal';
+import { Language, getTranslation } from './lib/translations';
 
 export default function App() {
   const [digests, setDigests] = useState<ChatDigestData[]>([]);
   const [activeDigest, setActiveDigest] = useState<ChatDigestData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [language, setLanguage] = useState<Language>(() => {
+    try {
+      const saved = localStorage.getItem("chatdigest_language");
+      return (saved === 'nl' ? 'nl' : 'en') as Language;
+    } catch (e) {
+      return 'en';
+    }
+  });
+  const [translating, setTranslating] = useState(false);
+  const prevLanguageRef = useRef<Language>(language);
   const [sidebarOpen, setSidebarOpen] = useState(false); // Collapsed on mobile by default
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
@@ -41,6 +52,67 @@ export default function App() {
       localStorage.setItem("desktop_sidebar_collapsed", JSON.stringify(sidebarCollapsed));
     } catch (e) {}
   }, [sidebarCollapsed]);
+
+  // Persist language state
+  useEffect(() => {
+    try {
+      localStorage.setItem("chatdigest_language", language);
+    } catch (e) {}
+  }, [language]);
+
+  // Dynamic active digest translation effect
+  useEffect(() => {
+    const prevLanguage = prevLanguageRef.current;
+    prevLanguageRef.current = language;
+
+    if (prevLanguage !== language && activeDigest) {
+      const translateActiveDigest = async () => {
+        setTranslating(true);
+        try {
+          const response = await fetch('/api/translate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              summary: activeDigest.summary,
+              executiveSummary: activeDigest.executiveSummary,
+              decisions: activeDigest.decisions,
+              actionItems: activeDigest.actionItems,
+              language: language
+            }),
+          });
+          if (!response.ok) {
+            throw new Error("Translation failed");
+          }
+          const data = await response.json();
+          
+          const updatedDigest: ChatDigestData = {
+            ...activeDigest,
+            summary: data.summary,
+            executiveSummary: data.executiveSummary,
+            decisions: data.decisions,
+            actionItems: data.actionItems,
+          };
+          
+          // Save and update state
+          setDigests((prev) => prev.map((d) => (d.id === updatedDigest.id ? updatedDigest : d)));
+          setActiveDigest(updatedDigest);
+          await saveDigest(updatedDigest);
+          if (getCurrentUid()) {
+            saveFirestoreDigest(updatedDigest).catch(err => {
+              console.warn("Background Firestore translate sync failed:", err);
+            });
+          }
+        } catch (err) {
+          console.error("Failed to translate active digest:", err);
+        } finally {
+          setTranslating(false);
+        }
+      };
+      translateActiveDigest();
+    }
+  }, [language, activeDigest]);
 
   const [dbError, setDbError] = useState<string | null>(null);
   
@@ -379,10 +451,10 @@ export default function App() {
                 Firebase Cloud Sync Ready
               </span>
             </h1>
-            <p className="text-[10px] text-gray-500 font-light mt-1">Hybrid Cloud-Native WhatsApp Parser & Analytical Dashboard</p>
+            <p className="text-[10px] text-gray-500 font-light mt-1">{getTranslation('brandSubtitle', language)}</p>
           </div>
         </div>
-
+ 
         {/* Global Controls & Auth */}
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-end">
           {/* User Profile / Login Panel */}
@@ -407,7 +479,7 @@ export default function App() {
                   <p className="font-semibold text-gray-200 select-all leading-none">{currentUser.displayName || "Active User"}</p>
                   <p className="text-[9px] text-[#22c55e] font-mono mt-0.5 flex items-center gap-1 font-bold">
                     <ShieldCheck className="w-2.5 h-2.5" />
-                    {isSandboxUser ? "Guest Mode" : "Sync Active"}
+                    {isSandboxUser ? getTranslation('guestMode', language) : getTranslation('syncActive', language)}
                   </p>
                 </div>
               </div>
@@ -432,10 +504,34 @@ export default function App() {
               ) : (
                 <LogIn className="w-3.5 h-3.5" />
               )}
-              Cloud Sync with Google
+              {getTranslation('cloudSync', language)}
             </button>
           )}
 
+          {/* Language Chooser */}
+          <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 select-none shrink-0" id="language-chooser">
+            <button
+              onClick={() => setLanguage('en')}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold tracking-wider transition-all duration-200 cursor-pointer ${
+                language === 'en'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              EN
+            </button>
+            <button
+              onClick={() => setLanguage('nl')}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold tracking-wider transition-all duration-200 cursor-pointer ${
+                language === 'nl'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              NL
+            </button>
+          </div>
+ 
           {/* Mobile drawer toggle */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -443,14 +539,14 @@ export default function App() {
           >
             <History className="w-4 h-4" />
           </button>
-
+ 
           <button
             onClick={handleStartNewImport}
             className="px-3.5 py-2 bg-white/5 hover:bg-white/10 text-gray-200 hover:text-indigo-400 transition-colors rounded-xl border border-white/10 text-xs font-semibold flex items-center gap-1.5"
             id="top-new-import-btn"
           >
             <Plus className="w-3.5 h-3.5" />
-            New Import
+            {getTranslation('newImport', language)}
           </button>
         </div>
       </header>
@@ -477,6 +573,7 @@ export default function App() {
               onDelete={handleDeleteDigest}
               onNewImport={handleStartNewImport}
               onRename={handleRenameDigest}
+              language={language}
             />
           </div>
         </div>
@@ -501,6 +598,7 @@ export default function App() {
                 onDelete={handleDeleteDigest}
                 onNewImport={handleStartNewImport}
                 onRename={handleRenameDigest}
+                language={language}
               />
             </div>
           </div>
@@ -513,6 +611,11 @@ export default function App() {
               <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
               <p className="text-xs font-semibold tracking-wider font-mono">LOADING LOCAL PLATFORM...</p>
             </div>
+          ) : translating ? (
+            <div className="h-96 flex flex-col items-center justify-center gap-3 animate-pulse text-gray-500" id="translating-loader-state">
+              <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
+              <p className="text-xs font-semibold tracking-wider font-mono uppercase">{getTranslation('translatingDigest', language)}</p>
+            </div>
           ) : (
             <div className="max-w-7xl mx-auto px-4 py-8 md:px-8 space-y-8" id="content-container">
               
@@ -524,49 +627,50 @@ export default function App() {
                     onUpdateActionItem={handleUpdateActionItem}
                     onUpdateActionItemAssignee={handleUpdateActionItemAssignee}
                     onSaveDigest={handleParsed}
+                    language={language}
                   />
                 </div>
               ) : (
                 // Blank upload landing page
                 <div className="animate-fadeIn py-8" id="upload-stage-wrapper">
                   <div className="text-center max-w-xl mx-auto space-y-4 mb-10" id="app-intro">
-                    <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Analyze WhatsApp Exports with Gemini AI</h2>
+                    <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">{getTranslation('analyzeTitle', language)}</h2>
                     <p className="text-gray-400 font-light text-xs sm:text-sm leading-relaxed">
-                      Transform plain WhatsApp backup text exports into clean, analytical digests backed by Gemini AI. Effortlessly track discussions, map consensus agreements, and outline action items securely.
+                      {getTranslation('analyzeDesc', language)}
                     </p>
                   </div>
-
-                  <UploadZone onParsed={handleParsed} />
-
+ 
+                  <UploadZone onParsed={handleParsed} language={language} />
+ 
                   {/* Highlights and local capabilities cards */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-3xl mx-auto mt-14" id="utility-capabilities-grid">
                     <div className="p-5 bg-[#121212] rounded-xl border border-white/5 text-left space-y-3 hover:border-white/10 transition-colors">
                       <div className="p-2 bg-white/5 text-blue-400 rounded-lg border border-white/10 inline-block">
                         <CheckSquare className="w-4 h-4" />
                       </div>
-                      <h4 className="text-xs uppercase tracking-wider font-bold text-gray-300">Action Tracker</h4>
+                      <h4 className="text-xs uppercase tracking-wider font-bold text-gray-300">{getTranslation('actionTracker', language)}</h4>
                       <p className="text-[11px] text-gray-500 leading-relaxed font-light">
-                        Scans messages for structures like "I will" or "todo" assignments to organize checklist follow-ups.
+                        {getTranslation('actionTrackerDesc', language)}
                       </p>
                     </div>
-
+ 
                     <div className="p-5 bg-[#121212] rounded-xl border border-white/5 text-left space-y-3 hover:border-white/10 transition-colors">
                       <div className="p-2 bg-white/5 text-emerald-400 rounded-lg border border-white/10 inline-block">
                         <Layers className="w-4 h-4" />
                       </div>
-                      <h4 className="text-xs uppercase tracking-wider font-bold text-gray-300">Key Decisions</h4>
+                      <h4 className="text-xs uppercase tracking-wider font-bold text-gray-300">{getTranslation('keyDecisions', language)}</h4>
                       <p className="text-[11px] text-gray-500 leading-relaxed font-light">
-                        Groups consensus statements with phrases containing words like "agreed," "confirmed," or "deal" into list nodes.
+                        {getTranslation('keyDecisionsDesc', language)}
                       </p>
                     </div>
-
+ 
                     <div className="p-5 bg-[#121212] rounded-xl border border-white/5 text-left space-y-3 hover:border-white/10 transition-colors">
                       <div className="p-2 bg-white/5 text-indigo-400 rounded-lg border border-white/10 inline-block">
                         <Plus className="w-4 h-4" />
                       </div>
-                      <h4 className="text-xs uppercase tracking-wider font-bold text-gray-300">Isolated Storage</h4>
+                      <h4 className="text-xs uppercase tracking-wider font-bold text-gray-300">{getTranslation('isolatedStorage', language)}</h4>
                       <p className="text-[11px] text-gray-500 leading-relaxed font-light">
-                        Persists logs directly inside IndexedDB offline caches on your own device, guaranteeing privacy.
+                        {getTranslation('isolatedStorageDesc', language)}
                       </p>
                     </div>
                   </div>
@@ -580,15 +684,15 @@ export default function App() {
 
       {/* Global minimal clean footer */}
       <footer className="py-4 border-t border-white/5 text-center text-[10px] text-gray-500 bg-[#0F0F0F] shrink-0 select-none" id="app-footer">
-        <p>© 2026 ChatDigest • Private Isolated Infrastructure • Geometric Balance Theme</p>
+        <p>{getTranslation('footerText', language)}</p>
       </footer>
-
+ 
       {/* Custom Confirmation Modal */}
       <ConfirmationModal
         isOpen={deleteConfirmId !== null}
-        title="Delete Chat Digest"
-        message="Are you sure you want to delete this chat digest? This action cannot be undone and will erase all parsed records from storage."
-        confirmLabel="Delete"
+        title={getTranslation('deleteTitle', language)}
+        message={getTranslation('deleteMsg', language)}
+        confirmLabel={getTranslation('deleteBtn', language)}
         onConfirm={() => {
           if (deleteConfirmId) {
             executeDeleteDigest(deleteConfirmId);

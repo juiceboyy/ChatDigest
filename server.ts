@@ -75,7 +75,7 @@ export async function createExpressApp() {
   // API endpoints
   app.post("/api/digest", async (req, res) => {
     try {
-      const { fileName, messages } = req.body;
+      const { fileName, messages, language } = req.body;
 
       if (!messages || !Array.isArray(messages) || messages.length === 0) {
         return res.status(400).json({ error: "No messages provided for parsing" });
@@ -114,7 +114,11 @@ export async function createExpressApp() {
         day: "numeric"
       });
 
+      const langInstruction = `IMPORTANT: You must write all output text, analysis, markdown text, titles, descriptions, explanations, and summaries in ${language === 'nl' ? 'Dutch' : 'English'}.`;
+
       const prompt = `Analyze this WhatsApp group chat conversation history and generate a high-quality analytical executive digest.
+
+${langInstruction}
 
 CRITICAL LOGICAL RULE & CONTEXT:
 Today's date is: ${todayStr} (June 21, 2026).
@@ -214,7 +218,7 @@ Please analyze the discussions and output the result in structured JSON. Include
 
   app.post("/api/parse-media", async (req, res) => {
     try {
-      const { fileBase64, fileMimeType, fileName, chatSummary, userPrompt } = req.body;
+      const { fileBase64, fileMimeType, fileName, chatSummary, userPrompt, language } = req.body;
 
       if (!fileBase64 || !fileMimeType) {
         return res.status(400).json({ error: "Missing required media file data" });
@@ -244,10 +248,14 @@ Please analyze the discussions and output the result in structured JSON. Include
         }
       };
 
+      const langInstruction = `IMPORTANT: You must write all output text, analysis, markdown text, titles, descriptions, explanations, and summaries in ${language === 'nl' ? 'Dutch' : 'English'}.`;
+
       const systemInstruction = `You are an expert AI multimodal media analyst for group chat conversations.
 Analyze the provided media file (${fileName || "attached media"}) in the context of the chat thread.
 We are providing a summary of the group chat conversation to give you context:
 "${chatSummary || "No context chat summary available."}"
+
+${langInstruction}
 
 Your job is to parse this media file and extract:
 1. "description": A highly detailed, professional, markdown-formatted executive summary explaining what this media file contains, what information it conveys, and how it fits into/relates to the chat group's themes. (2-3 paragraphs minimum).
@@ -319,7 +327,7 @@ Your job is to parse this media file and extract:
 
   app.post("/api/chat", async (req, res) => {
     try {
-      const { messages, decisions, chatHistory, userQuestion } = req.body;
+      const { messages, decisions, chatHistory, userQuestion, language } = req.body;
 
       if (!messages || !Array.isArray(messages) || !userQuestion) {
         return res.status(400).json({ error: "Missing required fields for chat" });
@@ -359,6 +367,8 @@ Your job is to parse this media file and extract:
         .map((d: any) => `- [Made by: ${d.sender} on ${d.dateStr}] ${d.text}`)
         .join("\n");
 
+      const langInstruction = `IMPORTANT: You must reply and write all responses in ${language === 'nl' ? 'Dutch' : 'English'}.`;
+
       const systemInstruction = `You are an expert AI meeting analyst. You are discussing a group chat ledger that is actively being viewed in a dashboard.
 Today is ${todayStr}. Any date in the future (after ${todayStr}), such as June 27, 2026, has not happened yet.
 Crucially: If you see any committed key decision on the ledger dated in the future (e.g., June 27, 2026), please understand and point out to the user that this is an incorrectly attributed date (it represents the celebration or event date being planned, not the actual date when the decision was agreed upon). The actual decision was made in the past relative to ${todayStr} (e.g. around June 15, 2026 during the chat stream).
@@ -370,7 +380,9 @@ ${decisionsText || "(No decisions are currently committed/accepted on the ledger
 Here is the group chat log context:
 ${conversationText}
 
-Provide crisp, authoritative answers to the user's questions. You have access to both the raw chat messages and the official ledger of committed Decisions. Always quote specific contributors, decisions, or timestamps when answering, helping the user accurately trace discussions and verified consensus. Use formatting or lists where appropriate. Reply in clear, conversational English or Dutch if the user asks in Dutch.`;
+${langInstruction}
+
+Provide crisp, authoritative answers to the user's questions. You have access to both the raw chat messages and the official ledger of committed Decisions. Always quote specific contributors, decisions, or timestamps when answering, helping the user accurately trace discussions and verified consensus. Use formatting or lists where appropriate.`;
 
       const contents = [];
       if (chatHistory && Array.isArray(chatHistory)) {
@@ -404,7 +416,7 @@ Provide crisp, authoritative answers to the user's questions. You have access to
 
   app.post("/api/check-contradictions", async (req, res) => {
     try {
-      const { newDecisionText, existingDecisions } = req.body;
+      const { newDecisionText, existingDecisions, language } = req.body;
 
       if (!newDecisionText) {
         return res.status(400).json({ error: "Missing newDecisionText" });
@@ -430,8 +442,12 @@ Provide crisp, authoritative answers to the user's questions. You have access to
         .map((d: any, index: number) => `Index: ${index} | ID: ${d.id} | Sender: ${d.sender} | Date: ${d.dateStr} | Statement: ${d.text}`)
         .join("\n");
 
+      const langInstruction = `IMPORTANT: You must write all output text, analysis, explanations, and reasons in ${language === 'nl' ? 'Dutch' : 'English'}.`;
+
       const systemInstruction = `You are a logical consistency and consensus auditing bot for project decisions and commitments.
 Your job is to identify when a newly proposed decision contradicts existing decisions in a ledger.
+
+${langInstruction}
 
 Crucially, if a contrary decision consists of multiple parts (compound commitment), you must break it down first into singular commitments.
 For example:
@@ -529,7 +545,7 @@ If any existing decisions are contrary to the new decision, identify them and br
 
   app.post("/api/executive-summary", async (req, res) => {
     try {
-      const { messages } = req.body;
+      const { messages, language } = req.body;
 
       if (!messages || !Array.isArray(messages) || messages.length === 0) {
         return res.status(400).json({ error: "No messages provided for executive summary generation" });
@@ -558,12 +574,16 @@ If any existing decisions are contrary to the new decision, identify them and br
         .map((m) => `[${m.dateStr} ${m.timeStr}] ${m.sender}: ${m.text}`)
         .join("\n");
 
+      const langInstruction = `IMPORTANT: You must write the executive summary in ${language === 'nl' ? 'Dutch' : 'English'}.`;
+
       const systemInstruction = `You are a professional conversation analyst. 
 Your task is to write a highly polished, coherent 2 to 3 sentence 'Executive Summary' of the entire conversation.
 - Answer 'What is the entire chat log about?' and 'What were the key agreements or final resolutions?'
 - Must be written in active, high-level prose, in third-person.
 - Keep it strictly to exactly 2 or 3 sentences total.
-- Do NOT use bullet points, markdown list syntax, or introductory meta-text like 'Based on the provided text...'. Just output the elegant plain-text prose directly.`;
+- Do NOT use bullet points, markdown list syntax, or introductory meta-text like 'Based on the provided text...'. Just output the elegant plain-text prose directly.
+
+${langInstruction}`;
 
       const prompt = `Here is the conversation text:\n${conversationText}\n\nGenerate the 2-3 sentence executive summary now.`;
 
@@ -592,7 +612,7 @@ Your task is to write a highly polished, coherent 2 to 3 sentence 'Executive Sum
 
   app.post("/api/playbook", async (req, res) => {
     try {
-      const { decisions, actionItems } = req.body;
+      const { decisions, actionItems, language } = req.body;
 
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
@@ -618,6 +638,8 @@ Your task is to write a highly polished, coherent 2 to 3 sentence 'Executive Sum
         .map((a: any) => `- [${a.sender}] ${a.text} (Completed: ${a.completed ? "Yes" : "No"})`)
         .join("\n");
 
+      const langInstruction = `IMPORTANT: You must write all output text, analysis, plays, steps, tips, descriptions, and summaries in ${language === 'nl' ? 'Dutch' : 'English'}.`;
+
       const systemInstruction = `You are an expert strategic advisor, operations head, and agile systems architect.
 Your job is to translate a list of key project decisions and action items into a highly actionable, structured, professional 'Operational Playbook' (runbook).
 
@@ -630,6 +652,8 @@ The playbook MUST be dynamic and directly inferred from the provided lists:
    - A comprehensive 'description' explaining the logic, rationale, and background of this play based on the decisions.
    - A list of tactical 'steps' that need to be followed sequentially (minimum 3 steps)
    - A list of expert operational 'tips' or strategic advice (minimum 2 tips)
+
+${langInstruction}
 
 Output the results strictly in structured JSON. Ensure all content is cohesive, elegant, highly detailed, and tailored to the topic discussed. Do not use generic placeholders.`;
 
@@ -699,6 +723,107 @@ Generate the complete Operational Playbook now.`;
     } catch (error: any) {
       console.error("Gemini API server-side playbook error:", error);
       res.status(500).json({ error: error.message || "Failed to generate AI Playbook." });
+    }
+  });
+
+  app.post("/api/translate", async (req, res) => {
+    try {
+      const { summary, executiveSummary, decisions, actionItems, language } = req.body;
+
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({
+          error: "GEMINI_API_KEY environment variable is not configured. Please supply it under Settings > Secrets."
+        });
+      }
+
+      const ai = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            "User-Agent": "aistudio-build",
+          }
+        }
+      });
+
+      const targetLang = language === 'nl' ? 'Dutch' : 'English';
+
+      const prompt = `You are a professional translator and meeting analyst.
+Translate the following chat digest parts into ${targetLang}. 
+
+CRITICAL: Keep the same markdown format, the same meaning, and the exact same tone. 
+For decisions and action items, translate only the text and sender fields (do not translate dates or IDs, but translate the task/agreement description text).
+If sender is "The Group" or "The Group", translate it to the target language if appropriate (e.g., "De Groep" in Dutch, or keep it). Keep other names as they are.
+
+Here is the data to translate:
+1. "summary":
+${summary || ""}
+
+2. "executiveSummary":
+${executiveSummary || ""}
+
+3. "decisions":
+${JSON.stringify(decisions || [])}
+
+4. "actionItems":
+${JSON.stringify(actionItems || [])}
+
+Output the translations in the exact same structured JSON schema.`;
+
+      const response = await generateContentWithRetry(ai, {
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              summary: { type: Type.STRING, description: "The translated summary in markdown." },
+              executiveSummary: { type: Type.STRING, description: "The translated executiveSummary text." },
+              decisions: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    id: { type: Type.STRING },
+                    sender: { type: Type.STRING },
+                    text: { type: Type.STRING, description: "The translated decision statement." },
+                    dateStr: { type: Type.STRING }
+                  },
+                  required: ["id", "sender", "text", "dateStr"]
+                }
+              },
+              actionItems: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    id: { type: Type.STRING },
+                    sender: { type: Type.STRING },
+                    text: { type: Type.STRING, description: "The translated action item description." },
+                    dateStr: { type: Type.STRING },
+                    completed: { type: Type.BOOLEAN }
+                  },
+                  required: ["id", "sender", "text", "dateStr", "completed"]
+                }
+              }
+            },
+            required: ["summary", "executiveSummary", "decisions", "actionItems"]
+          }
+        }
+      });
+
+      const responseText = response.text;
+      if (!responseText) {
+        throw new Error("Empty response received from translation model.");
+      }
+
+      const parsedJSON = JSON.parse(responseText.trim());
+      res.json(parsedJSON);
+
+    } catch (error: any) {
+      console.error("Gemini API server-side translation error:", error);
+      res.status(500).json({ error: error.message || "Failed to translate digest." });
     }
   });
 

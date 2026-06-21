@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { History, FileText, Trash2, Calendar, MessageSquare, Plus, Check, Pencil, X } from 'lucide-react';
 import { ChatDigestData } from '../types';
+import { Language, getTranslation } from '../lib/translations';
 
 interface HistorySidebarProps {
   digests: ChatDigestData[];
@@ -9,6 +10,7 @@ interface HistorySidebarProps {
   onDelete: (id: string) => void;
   onNewImport: () => void;
   onRename?: (id: string, newTitle: string) => void;
+  language: Language;
 }
 
 function formatBytes(bytes: number): string {
@@ -26,6 +28,7 @@ export default function HistorySidebar({
   onDelete,
   onNewImport,
   onRename,
+  language,
 }: HistorySidebarProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>('');
@@ -46,14 +49,14 @@ export default function HistorySidebar({
             <History className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-white">Local Digests</h2>
-            <p className="text-[10px] text-gray-500 font-mono tracking-wider">INDEXEDDB STORAGE</p>
+            <h2 className="text-sm font-semibold text-white">{getTranslation('localDigests', language)}</h2>
+            <p className="text-[10px] text-gray-500 font-mono tracking-wider">{getTranslation('indexedDbStorage', language)}</p>
           </div>
         </div>
 
         <button
           onClick={onNewImport}
-          title="Import another WhatsApp chat"
+          title={getTranslation('importAnother', language)}
           className="p-2 bg-white/5 hover:bg-white/10 hover:text-blue-400 text-gray-300 rounded border border-white/10 transition-colors"
         >
           <Plus className="w-4 h-4" />
@@ -67,9 +70,9 @@ export default function HistorySidebar({
             <div className="p-3 bg-white/5 rounded-lg text-gray-600 border border-white/5 mb-3">
               <FileText className="w-6 h-6" />
             </div>
-            <p className="text-xs text-gray-400 font-medium">No saved files</p>
+            <p className="text-xs text-gray-400 font-medium">{getTranslation('noSavedFiles', language)}</p>
             <p className="text-[10px] text-gray-500 max-w-[150px] mt-1 leading-normal">
-              Parse a .txt export. It will be stored here on your device.
+              {getTranslation('parseTxtExport', language)}
             </p>
           </div>
         ) : (
@@ -142,7 +145,7 @@ export default function HistorySidebar({
                           setEditingId(digest.id);
                           setEditValue(digest.title || digest.fileName.replace('.txt', ''));
                         }}
-                        title="Rename digest"
+                        title={getTranslation('renameDigest', language)}
                         className="opacity-100 lg:opacity-0 lg:group-hover:opacity-100 p-1.5 hover:bg-white/10 hover:text-blue-400 text-gray-400 rounded transition-all duration-200"
                       >
                         <Pencil className="w-3.5 h-3.5" />
@@ -152,7 +155,7 @@ export default function HistorySidebar({
                           e.stopPropagation();
                           onDelete(digest.id);
                         }}
-                        title="Delete record from local drive"
+                        title={getTranslation('deleteRecord', language)}
                         className="opacity-100 lg:opacity-0 lg:group-hover:opacity-100 p-1.5 hover:bg-rose-950/40 hover:text-rose-400 text-gray-400 rounded transition-all duration-200 animate-fadeIn"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -186,8 +189,8 @@ export default function HistorySidebar({
 
       {/* Device Privacy Footing */}
       <div className="p-3.5 border-t border-white/10 bg-white/3 text-[10px] text-gray-500 leading-normal font-light shrink-0 animate-fadeIn" id="sidebar-footer">
-        <p>🔒 Security Status: <span className="font-semibold text-emerald-500">Fully Isolated</span></p>
-        <p className="mt-1">All conversations are processed local-first. We do not transmit records or telemetry anywhere.</p>
+        <p>🔒 {getTranslation('securityStatus', language)}: <span className="font-semibold text-emerald-500">{getTranslation('fullyIsolated', language)}</span></p>
+        <p className="mt-1">{getTranslation('privacyNotice', language)}</p>
       </div>
     </div>
   );

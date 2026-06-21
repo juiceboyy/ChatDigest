@@ -9,15 +9,17 @@ import {
 import { ChatDigestData, ChatDecision, ActionItem, TimelineDataPoint, PlaybookPlay, PlaybookData } from '../types';
 import { exportDigestToPdf, exportPlaybookToPdf } from '../lib/pdfExporter';
 import ConfirmationModal from './ConfirmationModal';
+import { Language, getTranslation } from '../lib/translations';
 
 interface DashboardProps {
   digest: ChatDigestData;
   onUpdateActionItem: (actionItemId: string, completed: boolean) => void;
   onUpdateActionItemAssignee?: (actionItemId: string, assignee: string) => void;
   onSaveDigest?: (data: ChatDigestData) => void;
+  language: Language;
 }
 
-export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionItemAssignee, onSaveDigest }: DashboardProps) {
+export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionItemAssignee, onSaveDigest, language }: DashboardProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterParticipant, setFilterParticipant] = useState<string | null>(null);
   const [filterOnlyIncompleteActionItems, setFilterOnlyIncompleteActionItems] = useState(false);
@@ -142,7 +144,8 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
           fileMimeType: mediaFile.type,
           fileBase64: mediaBase64,
           chatSummary: digest.summary,
-          userPrompt: customPrompt.trim() || undefined
+          userPrompt: customPrompt.trim() || undefined,
+          language
         })
       });
 
@@ -250,6 +253,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
           fileName: digest.fileName,
           fileSize: digest.fileSize,
           messages: digest.messages,
+          language
         }),
       });
 
@@ -311,6 +315,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
         body: JSON.stringify({
           newDecisionText: cleanText,
           existingDecisions: digest.decisions,
+          language
         }),
       });
 
@@ -361,6 +366,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
         body: JSON.stringify({
           newDecisionText: updatedText,
           existingDecisions: digest.decisions,
+          language
         }),
       });
 
@@ -492,6 +498,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
             },
             body: JSON.stringify({
               messages: digest.messages,
+              language
             }),
           });
           if (!active) return;
@@ -538,6 +545,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
         },
         body: JSON.stringify({
           messages: digest.messages,
+          language
         }),
       });
       if (!response.ok) {
@@ -590,6 +598,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
         body: JSON.stringify({
           decisions: digest.decisions,
           actionItems: digest.actionItems,
+          language
         }),
       });
 
@@ -720,6 +729,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
           decisions: digest.decisions,
           chatHistory: chatHistory,
           userQuestion: userQuestion,
+          language
         }),
       });
 
@@ -1014,7 +1024,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
             </span>
             <div>
               <span className="text-[10px] tracking-widest font-mono text-indigo-400 uppercase font-semibold">Strategic Blueprint</span>
-              <h2 className="text-sm font-bold text-gray-150 mt-0.5">AI-Powered Project Operational Playbook</h2>
+              <h2 className="text-sm font-bold text-gray-150 mt-0.5">{getTranslation('btnCreatePlaybook', language)}</h2>
             </div>
           </div>
 
@@ -1083,9 +1093,9 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
                 <Sparkles className="w-3.5 h-3.5" />
                 Ledger Sync Integration
               </div>
-              <h3 className="text-sm font-bold text-gray-200 font-sans">Convert Agreement Ledgers into Operational Playbooks</h3>
+              <h3 className="text-sm font-bold text-gray-200 font-sans">{getTranslation('convertPlaybookTitle', language)}</h3>
               <p className="text-xs text-gray-400 leading-relaxed font-light">
-                This AI-driven runner translates decision ledgers and action assignments into real operational plays. It automatically structures sequential execution plans, sequential tracks (such as tech stack bootstraps, roles coordination, process guidelines), and expert runbook advice in one single click.
+                {getTranslation('convertPlaybookDesc', language)}
               </p>
             </div>
             <div className="shrink-0 w-full md:w-auto">
@@ -1095,7 +1105,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
                 className="w-full md:w-auto px-5 py-3 bg-indigo-600 hover:bg-indigo-500 hover:shadow-indigo-500/10 text-white rounded-xl text-xs font-bold transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer border border-indigo-500/25 shadow-md font-mono"
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                GENERATE AI PLAYBOOK
+                {getTranslation('btnCreatePlaybook', language).toUpperCase()}
               </button>
             </div>
           </div>
@@ -1821,7 +1831,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
               <div className="p-1.5 bg-white/5 text-blue-400 rounded-lg border border-white/10">
                 <Clock className="w-4 h-4" />
               </div>
-              <h3 className="text-xs uppercase tracking-widest text-[#FFF]/80 font-bold">Timeline Grid</h3>
+              <h3 className="text-xs uppercase tracking-widest text-[#FFF]/80 font-bold">{getTranslation('tabTimeline', language)}</h3>
             </div>
             <span className="text-[10px] font-mono px-2 py-0.5 bg-[#0A0A0A] text-gray-400 rounded-full border border-white/5">
               {digest.timeline.length} peaks
@@ -1976,7 +1986,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
               <div className="p-1.5 bg-white/5 text-emerald-400 rounded-lg border border-white/10">
                 <CheckCircle2 className="w-4 h-4" />
               </div>
-              <h3 className="text-xs uppercase tracking-widest text-[#FFF]/80 font-bold">Key Decisions</h3>
+              <h3 className="text-xs uppercase tracking-widest text-[#FFF]/80 font-bold">{getTranslation('keyDecisions', language)}</h3>
             </div>
             <span className="text-[10px] font-mono px-2 py-0.5 bg-[#0A0A0A] text-emerald-400 rounded-full border border-white/5">
               {filteredDecisions.length} recorded
@@ -2036,7 +2046,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
               <div className="p-1.5 bg-white/5 text-blue-400 rounded-lg border border-white/10">
                 <CheckSquare className="w-4 h-4" />
               </div>
-              <h3 className="text-xs uppercase tracking-widest text-[#FFF]/80 font-bold">Action Items</h3>
+              <h3 className="text-xs uppercase tracking-widest text-[#FFF]/80 font-bold">{getTranslation('tabActionItems', language)}</h3>
             </div>
             
             {/* Filter checkboxes */}
@@ -2048,7 +2058,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
                   : 'bg-[#0A0A0A] text-gray-400 border-white/10 hover:text-white'
               }`}
             >
-              {filterOnlyIncompleteActionItems ? 'Pending Tasks' : 'All Tasks'}
+              {filterOnlyIncompleteActionItems ? (language === 'nl' ? 'Openstaande taken' : 'Pending Tasks') : (language === 'nl' ? 'Alle taken' : 'All Tasks')}
             </button>
           </div>
 
@@ -2142,7 +2152,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
               <Sparkles className="w-4 h-4 text-blue-400" />
             </div>
             <div>
-              <h3 className="text-xs uppercase tracking-widest text-[#FFF]/80 font-bold">Ask Gemini Chat Agent</h3>
+              <h3 className="text-xs uppercase tracking-widest text-[#FFF]/80 font-bold">{getTranslation('btnAskAI', language)}</h3>
               <p className="text-[10px] text-gray-500 font-mono mt-0.5 font-light">Query topics, quote assertions, or search timeline agreements</p>
             </div>
           </div>
@@ -2241,7 +2251,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
             value={queryInput}
             onChange={(e) => setQueryInput(e.target.value)}
             disabled={chatLoading}
-            placeholder="Ask anything (e.g. 'Summarize what was discussed on the last day')"
+            placeholder={getTranslation('askQuestionPlaceholder', language)}
             className="flex-1 bg-[#0A0A0A] border border-white/10 rounded px-3.5 py-2.5 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500/50 transition-colors disabled:opacity-50"
           />
           <button
@@ -2250,7 +2260,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
             className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 active:scale-95 disabled:scale-100 disabled:opacity-50 rounded text-xs font-semibold text-white transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
           >
             <Send className="w-3.5 h-3.5" />
-            Send
+            {getTranslation('askGemini', language)}
           </button>
         </form>
       </div>
