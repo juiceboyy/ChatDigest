@@ -657,18 +657,18 @@ ${langInstruction}`;
 Your job is to translate a list of key project decisions and action items into a highly actionable, structured, professional 'Operational Playbook' (runbook).
 
 The playbook MUST be dynamic and directly inferred from the provided lists:
-1. Synthesize an "overview" (a clear, 2-3 sentence strategic alignment summary and roadmap).
-2. Generate 3 to 5 comprehensive operational "Plays" (e.g., split by categories like 'Technology & Stack', 'Schedules & Delivery', 'Roles & Alignment', or 'Testing & Operations' as relevant to the decisions).
+1. Synthesize an "overview" (a clear, 1-2 sentence strategic alignment summary and roadmap).
+2. Generate 2 to 3 operational "Plays" (e.g., split by categories like 'Technology & Stack', 'Schedules & Delivery', 'Roles & Alignment', or 'Testing & Operations' as relevant to the decisions).
 3. For each Play, write:
    - A unique, descriptive 'title' (written with action verbs, e.g., 'Bootstrap Client Micro-frontend & Environment Config')
    - A distinct operability 'category'
-   - A comprehensive 'description' explaining the logic, rationale, and background of this play based on the decisions.
-   - A list of tactical 'steps' that need to be followed sequentially (minimum 3 steps)
-   - A list of expert operational 'tips' or strategic advice (minimum 2 tips)
+   - A concise 'description' (1-2 sentences) explaining the logic, rationale, and background of this play based on the decisions.
+   - A list of tactical 'steps' that need to be followed sequentially (exactly 3 steps)
+   - A list of expert operational 'tips' or strategic advice (exactly 2 tips)
 
 ${langInstruction}
 
-Output the results strictly in structured JSON. Ensure all content is cohesive, elegant, highly detailed, and tailored to the topic discussed. Do not use generic placeholders.`;
+Output the results strictly in structured JSON. Ensure all content is cohesive, elegant, and tailored to the topic discussed. Do not use generic placeholders.`;
 
       const prompt = `Here are the active Decisions on the team ledger:
 ${decisionsText || "No decisions made yet."}
