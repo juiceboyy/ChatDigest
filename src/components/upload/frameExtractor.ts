@@ -82,8 +82,8 @@ export function extractFramesFromVideo(
               const maxDiff = 32 * 32 * 3 * 255;
               const averageDiff = diffSum / maxDiff;
               
-              // If difference is less than 1.5%, we consider it a duplicate (similar)
-              if (averageDiff < 0.015) {
+              // If difference is less than 3.5%, we consider it a duplicate (similar)
+              if (averageDiff < 0.035) {
                 isSimilar = true;
               }
             }
