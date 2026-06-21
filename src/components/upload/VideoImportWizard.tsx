@@ -29,7 +29,8 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
   const [fps, setFps] = useState<number>(2);
   const [processingProgress, setProcessingProgress] = useState({ current: 0, total: 0, isSynthesizing: false });
   
-  const threshold = 0.20; // 20% similarity threshold
+  // Custom threshold set to 20% by default, which can be custom-tuned inside ReviewStep if we expose it
+  const threshold = 0.20;
 
   const file = files[0];
   const isVideo = file && file.type.startsWith('video/');
@@ -85,6 +86,7 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
     }
   }, [step, file, files, isVideo, fps]);
 
+  // Compute filtered frames using 20% pixel threshold
   const filteredFrames = useMemo(() => {
     if (frames.length === 0) return [];
     const result = [frames[0]];
@@ -117,19 +119,12 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
     return result;
   }, [frames, threshold]);
 
-  const finalFramesToSend = useMemo(() => {
-    if (isVideo) {
-      return sampleEvenly(filteredFrames, 8);
-    }
-    return filteredFrames;
-  }, [filteredFrames, isVideo]);
-
   const handleDeleteFrame = (id: string) => {
     setFrames((prev) => prev.filter((f) => f.id !== id));
   };
 
   const handleProcessChat = async () => {
-    if (finalFramesToSend.length === 0) {
+    if (filteredFrames.length === 0) {
       setErrorMessage('Please upload or extract at least one chat frame.');
       setStep('error');
       return;
@@ -252,7 +247,7 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
         <ReviewStep
           isVideo={isVideo}
           frames={frames}
-          finalFramesToSend={finalFramesToSend}
+          finalFramesToSend={filteredFrames} // Pass ALL filtered frames to show and process rather than capping at 8!
           customPrompt={customPrompt}
           setCustomPrompt={setCustomPrompt}
           language={language}
