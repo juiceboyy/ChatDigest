@@ -20,6 +20,26 @@ interface FrameItem {
   tinyData?: Uint8ClampedArray;
 }
 
+const fetchWithRetry = async (
+  url: string,
+  options: RequestInit,
+  maxRetries = 2,
+  delay = 1000
+): Promise<Response> => {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      if (response.ok) return response;
+      const isTransient = [429, 502, 503, 504].includes(response.status);
+      if (!isTransient || attempt === maxRetries) return response;
+    } catch (err) {
+      if (attempt === maxRetries) throw err;
+    }
+    await new Promise((resolve) => setTimeout(resolve, delay * Math.pow(2, attempt)));
+  }
+  throw new Error("Request failed after retries");
+};
+
 export default function VideoImportWizard({ files, onParsed, onCancel, language }: VideoImportWizardProps) {
   const [step, setStep] = useState<'init' | 'extracting' | 'review' | 'processing' | 'error'>('init');
   const [frames, setFrames] = useState<FrameItem[]>([]);
@@ -29,26 +49,17 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
   const [fps, setFps] = useState<number>(2);
   const [processingProgress, setProcessingProgress] = useState({ current: 0, total: 0, isSynthesizing: false });
   
-  // Custom threshold set to 20% by default, which can be custom-tuned inside ReviewStep if we expose it
   const threshold = 0.20;
-
   const file = files[0];
   const isVideo = file && file.type.startsWith('video/');
 
   useEffect(() => {
     if (step !== 'init') return;
-
     if (isVideo) {
       setStep('extracting');
       extractFramesFromVideo(file, fps, (p) => setProgress(p))
         .then((extracted) => {
-          setFrames(
-            extracted.map((f, index) => ({
-              id: `frame-${index}-${Date.now()}`,
-              base64: f.base64,
-              tinyData: f.tinyData,
-            }))
-          );
+          setFrames(extracted.map((f, idx) => ({ id: `frame-${idx}-${Date.now()}`, base64: f.base64, tinyData: f.tinyData })));
           setStep('review');
         })
         .catch((err) => {
@@ -63,17 +74,13 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
           for (let i = 0; i < files.length; i++) {
             const f = files[i];
             if (!f.type.startsWith('image/')) continue;
-            
-            const base64 = await new Promise<string>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => resolve((reader.result as string).split(',')[1] || (reader.result as string));
-              reader.onerror = reject;
-              reader.readAsDataURL(f);
+            const base64 = await new Promise<string>((res, rej) => {
+              const r = new FileReader();
+              r.onload = () => res((r.result as string).split(',')[1]);
+              r.onerror = rej;
+              r.readAsDataURL(f);
             });
             loaded.push({ id: `screenshot-${i}-${Date.now()}`, base64 });
-          }
-          if (loaded.length === 0) {
-            throw new Error("No valid image files detected.");
           }
           setFrames(loaded);
           setStep('review');
@@ -86,32 +93,23 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
     }
   }, [step, file, files, isVideo, fps]);
 
-  // Compute filtered frames using 20% pixel threshold
   const filteredFrames = useMemo(() => {
     if (frames.length === 0) return [];
     const result = [frames[0]];
     let prevTiny = frames[0].tinyData;
     if (!prevTiny) return frames;
-
     for (let i = 1; i < frames.length; i++) {
       const currentFrame = frames[i];
       const currentTiny = currentFrame.tinyData;
-      if (!currentTiny) {
-        result.push(currentFrame);
-        continue;
-      }
-      
+      if (!currentTiny) { result.push(currentFrame); continue; }
       let diffSum = 0;
       for (let j = 0; j < currentTiny.length; j += 4) {
         diffSum += Math.abs(currentTiny[j] - prevTiny[j]);
         diffSum += Math.abs(currentTiny[j + 1] - prevTiny[j + 1]);
         diffSum += Math.abs(currentTiny[j + 2] - prevTiny[j + 2]);
       }
-      
       const maxDiff = 32 * 32 * 3 * 255;
-      const averageDiff = diffSum / maxDiff;
-      
-      if (averageDiff >= threshold) {
+      if ((diffSum / maxDiff) >= threshold) {
         result.push(currentFrame);
         prevTiny = currentTiny;
       }
@@ -119,53 +117,47 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
     return result;
   }, [frames, threshold]);
 
-  const handleDeleteFrame = (id: string) => {
-    setFrames((prev) => prev.filter((f) => f.id !== id));
-  };
-
   const handleProcessChat = async () => {
     if (filteredFrames.length === 0) {
       setErrorMessage('Please upload or extract at least one chat frame.');
       setStep('error');
       return;
     }
-
     setStep('processing');
     setErrorMessage('');
 
-    // Chunk frames into sets of 8 (with 1 overlapping frame) to bypass Netlify 10s timeout
-    const chunkSize = 8;
+    const chunkSize = 6;
     const chunks: FrameItem[][] = [];
-
     for (let i = 0; i < filteredFrames.length; i += (chunkSize - 1)) {
       const chunk = filteredFrames.slice(i, i + chunkSize);
-      if (chunk.length > 0) {
-        chunks.push(chunk);
-      }
+      if (chunk.length > 0) chunks.push(chunk);
       if (chunkSize <= 1) break;
     }
 
     try {
       let allMessages: any[] = [];
-
       for (let c = 0; c < chunks.length; c++) {
         setProcessingProgress({ current: c + 1, total: chunks.length, isSynthesizing: false });
-        
+        if (c > 0) {
+          await new Promise(res => setTimeout(res, 1500)); // Delay between requests
+        }
         const chunk = chunks[c];
-        const response = await fetch('/api/digest-media', {
+        const response = await fetchWithRetry('/api/digest-media', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            frames: chunk.map((f) => f.base64),
-            language,
-            extractMessagesOnly: true
-          }),
-        });
+          body: JSON.stringify({ frames: chunk.map((f) => f.base64), language, extractMessagesOnly: true }),
+        }, 2, 1200);
 
         if (!response.ok) {
-          throw new Error(`Failed to parse chunk ${c + 1} of ${chunks.length}.`);
+          let serverError = '';
+          try {
+            const errData = await response.json();
+            serverError = errData.error || errData.errorMessage || errData.message || '';
+          } catch (_) {
+            try { serverError = await response.text(); } catch (__) {}
+          }
+          throw new Error(`Failed to parse chunk ${c + 1} of ${chunks.length}${serverError ? `: ${serverError}` : ''}`);
         }
-
         const data = await response.json();
         if (data.messages && Array.isArray(data.messages)) {
           allMessages = [...allMessages, ...data.messages];
@@ -173,13 +165,12 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
       }
 
       setProcessingProgress({ current: chunks.length, total: chunks.length, isSynthesizing: true });
-      
       const uniqueMessages = deduplicateMessages(allMessages);
       if (uniqueMessages.length === 0) {
         throw new Error("Gemini did not find any valid chat messages inside the screenshots.");
       }
 
-      const digestResponse = await fetch('/api/digest', {
+      const digestResponse = await fetchWithRetry('/api/digest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -188,14 +179,12 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
           messages: uniqueMessages,
           language
         }),
-      });
+      }, 2, 1200);
 
       if (!digestResponse.ok) {
         throw new Error("Failed to compile final analytical digest from reconstructed messages.");
       }
-
       const geminiDigest = await digestResponse.json();
-      
       const totalSize = files.reduce((acc, f) => acc + f.size, 0);
       const compositeName = isVideo ? file.name : `${files.length} Screenshots`;
 
@@ -207,12 +196,15 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
         decisions: geminiDigest.decisions,
         actionItems: geminiDigest.actionItems
       }, compositeName, totalSize);
-      
       onParsed(digest);
     } catch (err: any) {
       setErrorMessage(err.message || 'Error occurred while contacting the Gemini service.');
       setStep('error');
     }
+  };
+
+  const handleDeleteFrame = (id: string) => {
+    setFrames((prev) => prev.filter((f) => f.id !== id));
   };
 
   return (
@@ -247,7 +239,7 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
         <ReviewStep
           isVideo={isVideo}
           frames={frames}
-          finalFramesToSend={filteredFrames} // Pass ALL filtered frames to show and process rather than capping at 8!
+          finalFramesToSend={filteredFrames}
           customPrompt={customPrompt}
           setCustomPrompt={setCustomPrompt}
           language={language}
@@ -267,10 +259,7 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
         <ErrorStep
           errorMessage={errorMessage}
           onCancel={onCancel}
-          onRetry={() => {
-            setStep('init');
-            setErrorMessage('');
-          }}
+          onRetry={() => { setStep('init'); setErrorMessage(''); }}
           language={language}
         />
       )}

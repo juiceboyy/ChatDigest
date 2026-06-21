@@ -81,6 +81,8 @@ export async function generateContentWithRetry(
             await new Promise((resolve) => setTimeout(resolve, waitTime));
             continue;
           }
+          // Exhausted retries for transient error: throw immediately to avoid Netlify function timeout
+          throw error;
         }
 
         console.log(
