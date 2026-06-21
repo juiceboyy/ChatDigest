@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, AlertCircle, Sparkles, X, ChevronLeft, Trash2 } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { ChatDigestData } from '../../types';
 import { Language, getTranslation } from '../../lib/translations';
 import { extractFramesFromVideo, FrameExtractionProgress } from './frameExtractor';
-import { buildDigestFromMediaData } from './digestBuilder';
+import { buildDigestFromMediaData, sampleEvenly, deduplicateMessages } from './digestBuilder';
+import ReviewStep from './ReviewStep';
+import { ExtractingStep, ProcessingStep, ErrorStep } from './WizardSteps';
 
 interface VideoImportWizardProps {
   files: File[];
@@ -18,18 +20,6 @@ interface FrameItem {
   tinyData?: Uint8ClampedArray;
 }
 
-// Evenly samples N elements from an array (always keeping the first and last elements)
-function sampleEvenly<T>(array: T[], n: number): T[] {
-  if (array.length <= n) return array;
-  const result: T[] = [];
-  const step = (array.length - 1) / (n - 1);
-  for (let i = 0; i < n; i++) {
-    const index = Math.round(i * step);
-    result.push(array[index]);
-  }
-  return result;
-}
-
 export default function VideoImportWizard({ files, onParsed, onCancel, language }: VideoImportWizardProps) {
   const [step, setStep] = useState<'init' | 'extracting' | 'review' | 'processing' | 'error'>('init');
   const [frames, setFrames] = useState<FrameItem[]>([]);
@@ -37,9 +27,9 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
   const [customPrompt, setCustomPrompt] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [fps, setFps] = useState<number>(2);
+  const [processingProgress, setProcessingProgress] = useState({ current: 0, total: 0, isSynthesizing: false });
   
-  // Set default threshold to 20% similarity difference as requested by the user
-  const threshold = 0.20;
+  const threshold = 0.20; // 20% similarity threshold
 
   const file = files[0];
   const isVideo = file && file.type.startsWith('video/');
@@ -95,13 +85,10 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
     }
   }, [step, file, files, isVideo, fps]);
 
-  // Compute filtered frames using 20% pixel threshold
   const filteredFrames = useMemo(() => {
     if (frames.length === 0) return [];
-    
     const result = [frames[0]];
     let prevTiny = frames[0].tinyData;
-    
     if (!prevTiny) return frames;
 
     for (let i = 1; i < frames.length; i++) {
@@ -130,7 +117,6 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
     return result;
   }, [frames, threshold]);
 
-  // Cap at a maximum of 8 frames for video to prevent Netlify serverless timeouts
   const finalFramesToSend = useMemo(() => {
     if (isVideo) {
       return sampleEvenly(filteredFrames, 8);
@@ -152,39 +138,81 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
     setStep('processing');
     setErrorMessage('');
 
+    // Chunk frames into sets of 8 (with 1 overlapping frame) to bypass Netlify 10s timeout
+    const chunkSize = 8;
+    const chunks: FrameItem[][] = [];
+
+    for (let i = 0; i < filteredFrames.length; i += (chunkSize - 1)) {
+      const chunk = filteredFrames.slice(i, i + chunkSize);
+      if (chunk.length > 0) {
+        chunks.push(chunk);
+      }
+      if (chunkSize <= 1) break;
+    }
+
     try {
-      const response = await fetch('/api/digest-media', {
+      let allMessages: any[] = [];
+
+      for (let c = 0; c < chunks.length; c++) {
+        setProcessingProgress({ current: c + 1, total: chunks.length, isSynthesizing: false });
+        
+        const chunk = chunks[c];
+        const response = await fetch('/api/digest-media', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            frames: chunk.map((f) => f.base64),
+            language,
+            extractMessagesOnly: true
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to parse chunk ${c + 1} of ${chunks.length}.`);
+        }
+
+        const data = await response.json();
+        if (data.messages && Array.isArray(data.messages)) {
+          allMessages = [...allMessages, ...data.messages];
+        }
+      }
+
+      setProcessingProgress({ current: chunks.length, total: chunks.length, isSynthesizing: true });
+      
+      const uniqueMessages = deduplicateMessages(allMessages);
+      if (uniqueMessages.length === 0) {
+        throw new Error("Gemini did not find any valid chat messages inside the screenshots.");
+      }
+
+      const digestResponse = await fetch('/api/digest', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          frames: finalFramesToSend.map((f) => f.base64),
-          userPrompt: customPrompt.trim() || undefined,
-          language,
+          fileName: isVideo ? file.name : `${files.length} Screenshots`,
+          fileSize: files.reduce((acc, f) => acc + f.size, 0),
+          messages: uniqueMessages,
+          language
         }),
       });
 
-      if (!response.ok) {
-        let errMsg = 'Failed to analyze chat media. Please try again.';
-        try {
-          const errData = await response.json();
-          errMsg = errData.error || errMsg;
-        } catch (_) {
-          try {
-            const errText = await response.text();
-            errMsg = errText || errMsg;
-          } catch (__) {}
-        }
-        throw new Error(errMsg);
+      if (!digestResponse.ok) {
+        throw new Error("Failed to compile final analytical digest from reconstructed messages.");
       }
 
-      const geminiData = await response.json();
+      const geminiDigest = await digestResponse.json();
       
       const totalSize = files.reduce((acc, f) => acc + f.size, 0);
       const compositeName = isVideo ? file.name : `${files.length} Screenshots`;
 
-      const digest = buildDigestFromMediaData(geminiData, compositeName, totalSize);
+      const digest = buildDigestFromMediaData({
+        messages: uniqueMessages,
+        summary: geminiDigest.summary,
+        executiveSummary: geminiDigest.executiveSummary,
+        keywords: geminiDigest.keywords,
+        decisions: geminiDigest.decisions,
+        actionItems: geminiDigest.actionItems
+      }, compositeName, totalSize);
+      
       onParsed(digest);
     } catch (err: any) {
       setErrorMessage(err.message || 'Error occurred while contacting the Gemini service.');
@@ -216,170 +244,40 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
 
       {/* EXTRACTING STEP */}
       {step === 'extracting' && (
-        <div className="flex flex-col items-center justify-center py-16 space-y-4 animate-pulse">
-          <div className="p-4 bg-blue-950/40 rounded-full border border-blue-900/40 text-blue-400">
-            <Loader2 className="w-10 h-10 animate-spin" />
-          </div>
-          <div className="text-center space-y-1">
-            <p className="text-sm font-semibold text-white">
-              {isVideo ? getTranslation('extractingFrames', language) : 'Reading screenshot files...'}
-            </p>
-            {isVideo && progress.total > 0 && (
-              <p className="text-xs text-gray-400">
-                {getTranslation('extractingProgress', language)
-                  .replace('{current}', progress.current.toString())
-                  .replace('{total}', progress.total.toString())}
-              </p>
-            )}
-          </div>
-          {isVideo && progress.total > 0 && (
-            <div className="w-64 h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/10">
-              <div
-                className="h-full bg-blue-500 transition-all duration-300"
-                style={{ width: `${(progress.current / progress.total) * 100}%` }}
-              />
-            </div>
-          )}
-        </div>
+        <ExtractingStep isVideo={isVideo} progress={progress} language={language} />
       )}
 
       {/* REVIEW STEP */}
       {step === 'review' && (
-        <div className="space-y-6">
-          <div className="space-y-1 text-left">
-            <h4 className="text-sm font-semibold text-white">{getTranslation('reviewFramesTitle', language)}</h4>
-            <p className="text-xs text-gray-400 leading-relaxed font-light">{getTranslation('reviewFramesDesc', language)}</p>
-          </div>
-
-          {/* DEDUPLICATION STATS INFO BANNER (Video Mode only) */}
-          {isVideo && frames.length > 0 && (
-            <div className="bg-[#0A0A0A] border border-white/5 p-3.5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left">
-              <div>
-                <h5 className="text-xs font-bold text-gray-300">
-                  {language === 'nl' ? 'Automatische Ontdubbeling Actief' : 'Automatic Deduplication Active'}
-                </h5>
-                <p className="text-[10px] text-gray-500 font-light mt-0.5">
-                  {language === 'nl' 
-                    ? 'Frames worden lokaal vergeleken op een drempelwaarde van 20%. We selecteren maximaal 8 frames om uitsluitingen te voorkomen.' 
-                    : 'Frames are compared locally at a 20% difference threshold. Max 8 frames are sent to prevent server timeouts.'}
-                </p>
-              </div>
-              <span className="text-[10px] font-mono font-bold bg-blue-500/10 text-blue-400 border border-blue-500/15 px-3 py-1 rounded-lg shrink-0 self-start sm:self-center">
-                {language === 'nl' 
-                  ? `${finalFramesToSend.length} frames behouden van de ${frames.length}` 
-                  : `${finalFramesToSend.length} frames kept out of ${frames.length}`}
-              </span>
-            </div>
-          )}
-
-          {/* Grid of frames */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4 max-h-[360px] overflow-y-auto custom-scrollbar p-1 border border-white/5 rounded-xl bg-[#0A0A0A]">
-            {finalFramesToSend.map((frame, index) => (
-              <div key={frame.id} className="relative group rounded-lg overflow-hidden border border-white/10 hover:border-blue-500/50 bg-[#121212] aspect-[9/16] transition-all">
-                <img
-                  src={`data:image/jpeg;base64,${frame.base64}`}
-                  alt={`Frame ${index + 1}`}
-                  className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-200"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="absolute top-1 right-1 flex items-center justify-center">
-                  <button
-                    onClick={() => handleDeleteFrame(frame.id)}
-                    className="p-1 bg-red-950/80 hover:bg-red-600 border border-red-900/40 text-red-200 hover:text-white rounded-lg transition-all shadow-md cursor-pointer opacity-90 group-hover:opacity-100"
-                    title="Remove frame"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                <div className="absolute bottom-1 left-1.5 text-[9px] font-mono bg-black/60 text-gray-300 px-1.5 py-0.5 rounded border border-white/5 select-none">
-                  #{index + 1}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Controls */}
-          <div className="space-y-4">
-            <div className="flex flex-col space-y-2">
-              <label className="text-[11px] font-mono text-gray-400 uppercase tracking-wider text-left">
-                {getTranslation('customInstructions', language)}
-              </label>
-              <textarea
-                value={customPrompt}
-                onChange={(e) => setCustomPrompt(e.target.value)}
-                placeholder="Voorbeeld: 'Dit is een chat over de sprintplanning. Let speciaal op besluiten over de database-migratie.'"
-                rows={3}
-                className="w-full text-xs bg-[#0A0A0A] border border-white/5 rounded-xl p-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none font-sans"
-              />
-            </div>
-
-            <div className="flex items-center justify-between pt-4 border-t border-white/5">
-              <button
-                onClick={onCancel}
-                className="px-4 py-2 border border-white/10 hover:bg-white/5 text-gray-300 hover:text-white font-semibold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer"
-              >
-                {getTranslation('cancelBtn', language)}
-              </button>
-              <button
-                onClick={handleProcessChat}
-                disabled={finalFramesToSend.length === 0}
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800/30 text-white font-semibold text-xs tracking-wider uppercase rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed shadow-md"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                {getTranslation('btnProcessChat', language)}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ReviewStep
+          isVideo={isVideo}
+          frames={frames}
+          finalFramesToSend={finalFramesToSend}
+          customPrompt={customPrompt}
+          setCustomPrompt={setCustomPrompt}
+          language={language}
+          onDeleteFrame={handleDeleteFrame}
+          onCancel={onCancel}
+          onProcess={handleProcessChat}
+        />
       )}
 
       {/* PROCESSING STEP */}
       {step === 'processing' && (
-        <div className="flex flex-col items-center justify-center py-16 space-y-6">
-          <div className="relative flex items-center justify-center">
-            <div className="absolute inset-0 bg-blue-500 rounded-full blur-xl opacity-20 animate-pulse" />
-            <div className="relative p-5 bg-blue-600/10 text-blue-400 rounded-full border border-blue-500/20 animate-spin duration-3000">
-              <Sparkles className="w-12 h-12" />
-            </div>
-          </div>
-          <div className="text-center space-y-2 max-w-md">
-            <h4 className="text-base font-semibold text-white">{getTranslation('processingChatMedia', language)}</h4>
-            <p className="text-xs text-gray-400 font-light leading-relaxed">
-              {getTranslation('processingChatMediaDesc', language)}
-            </p>
-          </div>
-        </div>
+        <ProcessingStep processingProgress={processingProgress} language={language} />
       )}
 
       {/* ERROR STEP */}
       {step === 'error' && (
-        <div className="space-y-6 py-6">
-          <div className="p-4 rounded-xl bg-red-950/20 border border-red-900/40 flex items-start gap-3.5 text-red-300 max-w-xl mx-auto text-left shadow-sm">
-            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-red-400" />
-            <div className="space-y-1">
-              <p className="font-semibold text-red-200">Processing Failed</p>
-              <p className="text-xs leading-relaxed font-light">{errorMessage || 'An unknown parsing error occurred.'}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-center gap-4">
-            <button
-              onClick={onCancel}
-              className="px-4 py-2 border border-white/10 hover:bg-white/5 text-gray-300 hover:text-white font-semibold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer"
-            >
-              {getTranslation('cancelBtn', language)}
-            </button>
-            <button
-              onClick={() => {
-                setStep('init');
-                setErrorMessage('');
-              }}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-md"
-            >
-              Retry Extraction
-            </button>
-          </div>
-        </div>
+        <ErrorStep
+          errorMessage={errorMessage}
+          onCancel={onCancel}
+          onRetry={() => {
+            setStep('init');
+            setErrorMessage('');
+          }}
+          language={language}
+        />
       )}
     </div>
   );

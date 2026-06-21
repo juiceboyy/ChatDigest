@@ -182,3 +182,33 @@ export function buildDigestFromMediaData(
     timeline,
   };
 }
+
+// Evenly samples N elements from an array (always keeping the first and last elements)
+export function sampleEvenly<T>(array: T[], n: number): T[] {
+  if (array.length <= n) return array;
+  const result: T[] = [];
+  const step = (array.length - 1) / (n - 1);
+  for (let i = 0; i < n; i++) {
+    const index = Math.round(i * step);
+    result.push(array[index]);
+  }
+  return result;
+}
+
+// Deduplicates message segments parsed from overlapping screenshots
+export function deduplicateMessages(messages: any[]): any[] {
+  const result: any[] = [];
+  for (const msg of messages) {
+    const isDuplicate = result.some(item => {
+      const sameSender = item.sender.trim().toLowerCase() === msg.sender.trim().toLowerCase();
+      const sameText = item.text.trim().toLowerCase() === msg.text.trim().toLowerCase();
+      const sameTime = !item.timeStr || !msg.timeStr || item.timeStr.trim() === msg.timeStr.trim();
+      const sameDate = !item.dateStr || !msg.dateStr || item.dateStr.trim() === msg.dateStr.trim();
+      return sameSender && sameText && sameTime && sameDate;
+    });
+    if (!isDuplicate) {
+      result.push(msg);
+    }
+  }
+  return result;
+}
