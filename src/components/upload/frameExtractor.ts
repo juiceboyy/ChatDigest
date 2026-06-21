@@ -3,19 +3,22 @@ export interface FrameExtractionProgress {
   total: number;
 }
 
+export interface ExtractedFrame {
+  base64: string;
+  tinyData: Uint8ClampedArray;
+}
+
 export function extractFramesFromVideo(
   file: File,
   fps: number = 2,
   onProgress?: (progress: FrameExtractionProgress) => void
-): Promise<string[]> {
+): Promise<ExtractedFrame[]> {
   return new Promise((resolve, reject) => {
     const video = document.createElement('video');
     const objectUrl = URL.createObjectURL(file);
     video.src = objectUrl;
     video.muted = true;
     video.playsInline = true;
-    
-    // Ensure cross-origin loading if applicable (not strictly needed for local files, but good practice)
     video.crossOrigin = 'anonymous';
 
     video.onloadedmetadata = async () => {
@@ -27,7 +30,7 @@ export function extractFramesFromVideo(
         }
 
         const totalFrames = Math.max(1, Math.floor(duration * fps));
-        const frames: string[] = [];
+        const frames: ExtractedFrame[] = [];
         
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -41,7 +44,7 @@ export function extractFramesFromVideo(
         canvas.width = targetWidth;
         canvas.height = (video.videoHeight / video.videoWidth) * targetWidth;
         
-        // Setup tiny offscreen canvas for comparison (32x32) to filter out duplicate static frames
+        // Setup tiny offscreen canvas for comparison (32x32)
         const tinyCanvas = document.createElement('canvas');
         tinyCanvas.width = 32;
         tinyCanvas.height = 32;
@@ -65,7 +68,7 @@ export function extractFramesFromVideo(
           
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-          let isSimilar = false;
+          let isAbsoluteDuplicate = false;
           let currentTinyData: Uint8ClampedArray | null = null;
 
           if (tinyCtx) {
@@ -82,19 +85,20 @@ export function extractFramesFromVideo(
               const maxDiff = 32 * 32 * 3 * 255;
               const averageDiff = diffSum / maxDiff;
               
-              // If difference is less than 3.5%, we consider it a duplicate (similar)
-              if (averageDiff < 0.035) {
-                isSimilar = true;
+              // Only filter out absolute pauses (e.g. less than 0.2% difference)
+              if (averageDiff < 0.002) {
+                isAbsoluteDuplicate = true;
               }
             }
           }
 
-          if (!isSimilar) {
+          if (!isAbsoluteDuplicate && currentTinyData) {
             const base64 = canvas.toDataURL('image/jpeg', 0.75).split(',')[1];
-            frames.push(base64);
-            if (currentTinyData) {
-              prevTinyData = currentTinyData;
-            }
+            frames.push({
+              base64,
+              tinyData: currentTinyData
+            });
+            prevTinyData = currentTinyData;
           }
           
           frameCount++;

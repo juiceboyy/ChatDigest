@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, AlertCircle, Sparkles, X, ChevronLeft, Trash2 } from 'lucide-react';
 import { ChatDigestData } from '../../types';
 import { Language, getTranslation } from '../../lib/translations';
@@ -15,6 +15,7 @@ interface VideoImportWizardProps {
 interface FrameItem {
   id: string;
   base64: string;
+  tinyData?: Uint8ClampedArray;
 }
 
 export default function VideoImportWizard({ files, onParsed, onCancel, language }: VideoImportWizardProps) {
@@ -24,6 +25,7 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
   const [customPrompt, setCustomPrompt] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [fps, setFps] = useState<number>(2);
+  const [threshold, setThreshold] = useState<number>(0.07); // Default 7% similarity threshold
 
   const file = files[0];
   const isVideo = file && file.type.startsWith('video/');
@@ -32,11 +34,16 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
     if (step !== 'init') return;
 
     if (isVideo) {
-      // Start extracting video frames
       setStep('extracting');
       extractFramesFromVideo(file, fps, (p) => setProgress(p))
         .then((extracted) => {
-          setFrames(extracted.map((base64, index) => ({ id: `frame-${index}-${Date.now()}`, base64 })));
+          setFrames(
+            extracted.map((f, index) => ({
+              id: `frame-${index}-${Date.now()}`,
+              base64: f.base64,
+              tinyData: f.tinyData,
+            }))
+          );
           setStep('review');
         })
         .catch((err) => {
@@ -44,7 +51,6 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
           setStep('error');
         });
     } else {
-      // Handle screenshot files
       setStep('extracting');
       const loadScreenshots = async () => {
         try {
@@ -75,12 +81,49 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
     }
   }, [step, file, files, isVideo, fps]);
 
+  // Dynamically compute filtered frames based on threshold slider
+  const filteredFrames = useMemo(() => {
+    if (frames.length === 0) return [];
+    
+    const result = [frames[0]];
+    let prevTiny = frames[0].tinyData;
+    
+    // If frames do not have comparison tinyData (e.g. manually uploaded screenshots), skip filtering
+    if (!prevTiny) return frames;
+
+    for (let i = 1; i < frames.length; i++) {
+      const currentFrame = frames[i];
+      const currentTiny = currentFrame.tinyData;
+      if (!currentTiny) {
+        result.push(currentFrame);
+        continue;
+      }
+      
+      let diffSum = 0;
+      for (let j = 0; j < currentTiny.length; j += 4) {
+        diffSum += Math.abs(currentTiny[j] - prevTiny[j]);
+        diffSum += Math.abs(currentTiny[j + 1] - prevTiny[j + 1]);
+        diffSum += Math.abs(currentTiny[j + 2] - prevTiny[j + 2]);
+      }
+      
+      const maxDiff = 32 * 32 * 3 * 255;
+      const averageDiff = diffSum / maxDiff;
+      
+      // If difference is greater than or equal to threshold, keep it (not duplicate)
+      if (averageDiff >= threshold) {
+        result.push(currentFrame);
+        prevTiny = currentTiny;
+      }
+    }
+    return result;
+  }, [frames, threshold]);
+
   const handleDeleteFrame = (id: string) => {
     setFrames((prev) => prev.filter((f) => f.id !== id));
   };
 
   const handleProcessChat = async () => {
-    if (frames.length === 0) {
+    if (filteredFrames.length === 0) {
       setErrorMessage('Please upload or extract at least one chat frame.');
       setStep('error');
       return;
@@ -96,7 +139,7 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          frames: frames.map((f) => f.base64),
+          frames: filteredFrames.map((f) => f.base64),
           userPrompt: customPrompt.trim() || undefined,
           language,
         }),
@@ -118,7 +161,6 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
 
       const geminiData = await response.json();
       
-      // Calculate remaining file details
       const totalSize = files.reduce((acc, f) => acc + f.size, 0);
       const compositeName = isVideo ? file.name : `${files.length} Screenshots`;
 
@@ -189,9 +231,50 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
             <p className="text-xs text-gray-400 leading-relaxed font-light">{getTranslation('reviewFramesDesc', language)}</p>
           </div>
 
+          {/* DYNAMIC DEDUPLICATION SLIDER (Video Mode only) */}
+          {isVideo && frames.length > 0 && (
+            <div className="bg-[#0A0A0A] border border-white/5 p-4 rounded-xl space-y-3 text-left">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h5 className="text-xs font-bold uppercase tracking-wider text-gray-300">
+                    {language === 'nl' ? 'Deduplicatie Gevoeligheid' : 'Deduplication Sensitivity'}
+                  </h5>
+                  <p className="text-[10px] text-gray-500 font-light mt-0.5">
+                    {language === 'nl' 
+                      ? 'Sleep de schuifregelaar om de drempelwaarde aan te passen. Hogere waarden filteren meer overlap weg.' 
+                      : 'Drag the slider to adjust sensitivity. Higher values filter out more overlapping content.'}
+                  </p>
+                </div>
+                <div className="text-[10px] font-mono font-bold bg-blue-500/10 text-blue-400 border border-blue-500/15 px-2.5 py-1 rounded-lg shrink-0">
+                  {Math.round(threshold * 100)}% {language === 'nl' ? 'Drempel' : 'Threshold'}
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <input
+                  type="range"
+                  min="0.01"
+                  max="0.20"
+                  step="0.005"
+                  value={threshold}
+                  onChange={(e) => setThreshold(parseFloat(e.target.value))}
+                  className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-500 focus:outline-none"
+                />
+              </div>
+              <div className="flex items-center justify-between text-[9px] text-gray-500 font-mono">
+                <span>{language === 'nl' ? '1% (Meer overlap behouden)' : '1% (Keep more overlap)'}</span>
+                <span className="text-blue-450 font-bold bg-blue-500/5 px-2 py-0.5 rounded border border-blue-500/10">
+                  {language === 'nl' 
+                    ? `${filteredFrames.length} frames geselecteerd van de ${frames.length}` 
+                    : `${filteredFrames.length} frames selected out of ${frames.length}`}
+                </span>
+                <span>{language === 'nl' ? '20% (Agressief filteren)' : '20% (Aggressive filtering)'}</span>
+              </div>
+            </div>
+          )}
+
           {/* Grid of frames */}
           <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4 max-h-[360px] overflow-y-auto custom-scrollbar p-1 border border-white/5 rounded-xl bg-[#0A0A0A]">
-            {frames.map((frame, index) => (
+            {filteredFrames.map((frame, index) => (
               <div key={frame.id} className="relative group rounded-lg overflow-hidden border border-white/10 hover:border-blue-500/50 bg-[#121212] aspect-[9/16] transition-all">
                 <img
                   src={`data:image/jpeg;base64,${frame.base64}`}
@@ -239,7 +322,7 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
               </button>
               <button
                 onClick={handleProcessChat}
-                disabled={frames.length === 0}
+                disabled={filteredFrames.length === 0}
                 className="px-5 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800/30 text-white font-semibold text-xs tracking-wider uppercase rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed shadow-md"
               >
                 <Sparkles className="w-3.5 h-3.5" />
