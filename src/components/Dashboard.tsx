@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   FileText, Calendar, Users, MessageSquare, Download, CheckSquare, 
   TrendingUp, HelpCircle, Search, Clock, ArrowRight, CheckCircle2,
@@ -2334,9 +2335,9 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
       </div>
 
       {/* SENSITIVE FULL TEXT DETAIL MODAL */}
-      {selectedDetail && (
+      {selectedDetail && createPortal(
         <div 
-          className="fixed inset-0 bg-black/80 backdrop-blur-xs z-[100] flex items-center justify-center p-4 animate-fadeIn"
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
           onClick={() => setSelectedDetail(null)}
           id="item-detail-modal-overlay"
         >
@@ -2471,11 +2472,11 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
-      {committingDecision && (
+      {committingDecision && createPortal(
         <div 
-          className="fixed inset-0 bg-black/85 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-fadeIn"
+          className="fixed inset-0 bg-black/85 backdrop-blur-md z-[9999] flex items-center justify-center p-4"
           onClick={() => {
             setCommittingDecision(null);
             setContradictions([]);
@@ -2703,7 +2704,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* Custom Media Deletion Confirmation Modal */}
       <ConfirmationModal
