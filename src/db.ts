@@ -71,10 +71,8 @@ export async function getAllDigests(): Promise<ChatDigestData[]> {
   });
 }
 
-/**
- * Deletes a single digest
- */
 export async function deleteDigest(id: string): Promise<void> {
+  console.log(`[IndexedDB] deleteDigest called for ID: ${id}`);
   const db = await initDB();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, 'readwrite');
@@ -82,10 +80,12 @@ export async function deleteDigest(id: string): Promise<void> {
     const request = store.delete(id);
 
     request.onsuccess = () => {
+      console.log(`[IndexedDB] deleteDigest success for ID: ${id}`);
       resolve();
     };
 
     request.onerror = () => {
+      console.error(`[IndexedDB] deleteDigest failed for ID: ${id}`, request.error);
       reject(new Error('Failed to delete the digest.'));
     };
   });

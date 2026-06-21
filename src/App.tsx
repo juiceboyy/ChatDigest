@@ -193,23 +193,26 @@ export default function App() {
   };
 
   const executeDeleteDigest = async (id: string) => {
+    console.log(`[App] executeDeleteDigest starting for ID: ${id}`);
     setDeleteConfirmId(null);
     try {
       if (getCurrentUid()) {
+        console.log(`[App] Deleting Cloud/Sandbox Digest with UID: ${getCurrentUid()}`);
         await deleteFirestoreDigest(id);
       } else {
+        console.log("[App] Deleting local IndexedDB digest offline");
         await deleteDigest(id);
       }
     } catch (err) {
-      console.error("Failed to delete digest:", err);
+      console.error("[App] Failed to delete digest database record:", err);
     } finally {
-      setDigests((prev) => {
-        const filtered = prev.filter((d) => d.id !== id);
-        if (activeDigest?.id === id) {
-          setActiveDigest(filtered.length > 0 ? filtered[0] : null);
-        }
-        return filtered;
-      });
+      console.log("[App] Updating React state for digests");
+      const filtered = digests.filter((d) => d.id !== id);
+      setDigests(filtered);
+      if (activeDigest?.id === id) {
+        console.log("[App] Deleted active digest; updating activeDigest selection");
+        setActiveDigest(filtered.length > 0 ? filtered[0] : null);
+      }
     }
   };
 
