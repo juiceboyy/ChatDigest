@@ -41,6 +41,13 @@ export function extractFramesFromVideo(
         canvas.width = targetWidth;
         canvas.height = (video.videoHeight / video.videoWidth) * targetWidth;
         
+        // Setup tiny offscreen canvas for comparison (32x32) to filter out duplicate static frames
+        const tinyCanvas = document.createElement('canvas');
+        tinyCanvas.width = 32;
+        tinyCanvas.height = 32;
+        const tinyCtx = tinyCanvas.getContext('2d');
+        let prevTinyData: Uint8ClampedArray | null = null;
+
         const interval = 1 / fps;
         let currentTime = 0;
         let frameCount = 0;
@@ -57,8 +64,38 @@ export function extractFramesFromVideo(
           });
           
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const base64 = canvas.toDataURL('image/jpeg', 0.75).split(',')[1];
-          frames.push(base64);
+
+          let isSimilar = false;
+          let currentTinyData: Uint8ClampedArray | null = null;
+
+          if (tinyCtx) {
+            tinyCtx.drawImage(video, 0, 0, 32, 32);
+            currentTinyData = tinyCtx.getImageData(0, 0, 32, 32).data;
+
+            if (prevTinyData) {
+              let diffSum = 0;
+              for (let i = 0; i < currentTinyData.length; i += 4) {
+                diffSum += Math.abs(currentTinyData[i] - prevTinyData[i]);     // R
+                diffSum += Math.abs(currentTinyData[i + 1] - prevTinyData[i + 1]); // G
+                diffSum += Math.abs(currentTinyData[i + 2] - prevTinyData[i + 2]); // B
+              }
+              const maxDiff = 32 * 32 * 3 * 255;
+              const averageDiff = diffSum / maxDiff;
+              
+              // If difference is less than 1.5%, we consider it a duplicate (similar)
+              if (averageDiff < 0.015) {
+                isSimilar = true;
+              }
+            }
+          }
+
+          if (!isSimilar) {
+            const base64 = canvas.toDataURL('image/jpeg', 0.75).split(',')[1];
+            frames.push(base64);
+            if (currentTinyData) {
+              prevTinyData = currentTinyData;
+            }
+          }
           
           frameCount++;
           if (onProgress) {
