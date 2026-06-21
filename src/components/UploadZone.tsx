@@ -68,8 +68,19 @@ export default function UploadZone({ onParsed, language }: UploadZoneProps) {
         });
 
         if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.error || getTranslation('serverFailed', language));
+          let errMsg = getTranslation('serverFailed', language);
+          try {
+            const errData = await response.json();
+            errMsg = errData.error || errMsg;
+          } catch (e) {
+            try {
+              const errText = await response.text();
+              errMsg = errText || response.statusText || errMsg;
+            } catch (_) {
+              errMsg = response.statusText || errMsg;
+            }
+          }
+          throw new Error(errMsg);
         }
 
         const geminiDigest = await response.json();

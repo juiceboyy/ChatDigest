@@ -11,6 +11,22 @@ import { exportDigestToPdf, exportPlaybookToPdf } from '../lib/pdfExporter';
 import ConfirmationModal from './ConfirmationModal';
 import { Language, getTranslation } from '../lib/translations';
 
+async function handleResponseError(response: Response, defaultMessage: string): Promise<never> {
+  let errMsg = defaultMessage;
+  try {
+    const errData = await response.json();
+    errMsg = errData.error || errMsg;
+  } catch (e) {
+    try {
+      const errText = await response.text();
+      errMsg = errText || response.statusText || errMsg;
+    } catch (_) {
+      errMsg = response.statusText || errMsg;
+    }
+  }
+  throw new Error(errMsg);
+}
+
 interface DashboardProps {
   digest: ChatDigestData;
   onUpdateActionItem: (actionItemId: string, completed: boolean) => void;
@@ -150,8 +166,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
       });
 
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || "Failed to analyze media file using Gemini.");
+        await handleResponseError(response, "Failed to analyze media file using Gemini.");
       }
 
       const data = await response.json();
@@ -258,8 +273,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
       });
 
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || 'Server failed to analyze log with Gemini');
+        await handleResponseError(response, 'Server failed to analyze log with Gemini');
       }
 
       const geminiDigest = await response.json();
@@ -320,8 +334,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
       });
 
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || 'Failed to audit ledger for contrary items.');
+        await handleResponseError(response, 'Failed to audit ledger for contrary items.');
       }
 
       const responseJSON = await response.json();
@@ -371,8 +384,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
       });
 
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || 'Failed to re-audit ledger.');
+        await handleResponseError(response, 'Failed to re-audit ledger.');
       }
 
       const responseJSON = await response.json();
@@ -503,8 +515,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
           });
           if (!active) return;
           if (!response.ok) {
-            const errData = await response.json();
-            throw new Error(errData.error || 'Failed to auto-generate summary');
+            await handleResponseError(response, 'Failed to auto-generate summary');
           }
           const data = await response.json();
           if (!active) return;
@@ -549,8 +560,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
         }),
       });
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || 'Failed to regenerate executive summary');
+        await handleResponseError(response, 'Failed to regenerate executive summary');
       }
       const data = await response.json();
       if (data.executiveSummary && onSaveDigest) {
@@ -603,8 +613,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
       });
 
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || 'Failed to generate play book');
+        await handleResponseError(response, 'Failed to generate playbook');
       }
 
       const data = await response.json();
@@ -734,8 +743,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
       });
 
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || 'Server failed to answer search query.');
+        await handleResponseError(response, 'Server failed to answer search query.');
       }
 
       const responseJSON = await response.json();
