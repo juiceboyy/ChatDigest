@@ -165,25 +165,26 @@ export default function App() {
 
   // Save new digest
   const handleParsed = async (data: ChatDigestData) => {
+    const fullData = { ...data, isFullyLoaded: true };
     try {
       if (getCurrentUid()) {
-        await saveFirestoreDigest(data);
+        await saveFirestoreDigest(fullData);
         const stored = await getFirestoreDigests();
         setDigests(stored);
-        setActiveDigest(data);
+        setActiveDigest(fullData);
       } else {
-        await saveDigest(data);
+        await saveDigest(fullData);
         const stored = await getAllDigests();
         setDigests(stored);
-        setActiveDigest(data);
+        setActiveDigest(fullData);
       }
       // Close sidebar drawer if open on mobile
       setSidebarOpen(false);
     } catch (err: any) {
       console.error(err);
       // Fallback state update
-      setDigests((prev) => [data, ...prev].filter((d, i, self) => self.findIndex(x => x.id === d.id) === i));
-      setActiveDigest(data);
+      setDigests((prev) => [fullData, ...prev].filter((d, i, self) => self.findIndex(x => x.id === d.id) === i));
+      setActiveDigest(fullData);
     }
   };
 

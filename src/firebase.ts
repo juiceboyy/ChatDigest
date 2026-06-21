@@ -246,16 +246,7 @@ export async function getFirestoreDigests(): Promise<ChatDigestData[]> {
       });
     });
 
-    // Write to offline IndexedDB store as an instant parallel copy
-    for (const d of results) {
-      try {
-        await saveDigest(d);
-      } catch (e) {
-        // Safe to ignore offline backup write error
-      }
-    }
-
-    // Merge with local IndexedDB digests to ensure any local-only or not-yet-synced digests are preserved
+    // Read all local digests from IndexedDB first
     let localDigests: ChatDigestData[] = [];
     try {
       localDigests = await getAllDigests();
@@ -263,12 +254,39 @@ export async function getFirestoreDigests(): Promise<ChatDigestData[]> {
       console.warn("Failed to retrieve local digests for merge:", e);
     }
 
+    // Write to offline IndexedDB store as an instant parallel copy
+    for (const d of results) {
+      const localCopy = localDigests.find(ld => ld.id === d.id);
+      if (localCopy && localCopy.isFullyLoaded && !d.isFullyLoaded) {
+        // Do not overwrite the local fully loaded copy with metadata-only remote copy!
+        continue;
+      }
+      try {
+        await saveDigest(d);
+      } catch (e) {
+        // Safe to ignore offline backup write error
+      }
+    }
+
     const mergedMap = new Map<string, ChatDigestData>();
     for (const d of localDigests) {
       mergedMap.set(d.id, d);
     }
     for (const d of results) {
-      mergedMap.set(d.id, d);
+      const localCopy = mergedMap.get(d.id);
+      if (localCopy && localCopy.isFullyLoaded && !d.isFullyLoaded) {
+        // Keep the local copy since it is fully loaded with messages/attachments!
+        // But update any updated metadata from remote
+        mergedMap.set(d.id, {
+          ...localCopy,
+          ...d, // override metadata from remote
+          messages: localCopy.messages, // preserve local messages
+          zipAttachments: localCopy.zipAttachments, // preserve local attachments
+          isFullyLoaded: true // keep fully loaded status!
+        });
+      } else {
+        mergedMap.set(d.id, d);
+      }
     }
     const mergedList = Array.from(mergedMap.values());
 
@@ -302,7 +320,18 @@ export async function getFirestoreDigests(): Promise<ChatDigestData[]> {
       mergedMap.set(d.id, d);
     }
     for (const d of cachedList) {
-      mergedMap.set(d.id, d);
+      const localCopy = mergedMap.get(d.id);
+      if (localCopy && localCopy.isFullyLoaded && !d.isFullyLoaded) {
+        mergedMap.set(d.id, {
+          ...localCopy,
+          ...d,
+          messages: localCopy.messages,
+          zipAttachments: localCopy.zipAttachments,
+          isFullyLoaded: true
+        });
+      } else {
+        mergedMap.set(d.id, d);
+      }
     }
     const mergedList = Array.from(mergedMap.values());
 

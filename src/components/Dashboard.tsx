@@ -68,11 +68,12 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
     completed?: boolean;
   } | null>(null);
 
-  // Executive 2-3 sentence summary state
+    // Executive 2-3 sentence summary state
   const [isGeneratingExecSummary, setIsGeneratingExecSummary] = useState(false);
   const [execSummaryError, setExecSummaryError] = useState<string | null>(null);
   const [isEditingExecSummary, setIsEditingExecSummary] = useState(false);
   const [editingExecSummaryText, setEditingExecSummaryText] = useState('');
+  const generatingRef = React.useRef(false);
 
   // AI Playbook states
   const [isGeneratingPlaybook, setIsGeneratingPlaybook] = useState(false);
@@ -474,8 +475,9 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
   // Generate the 2-3 sentence executive summary automatically if missing
   React.useEffect(() => {
     let active = true;
-    if (!digest.executiveSummary && digest.messages.length > 0 && !isGeneratingExecSummary) {
+    if (!digest.executiveSummary && digest.messages.length > 0 && !generatingRef.current) {
       const autoGenerate = async () => {
+        generatingRef.current = true;
         setIsGeneratingExecSummary(true);
         setExecSummaryError(null);
         try {
@@ -508,9 +510,8 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
             setExecSummaryError(err.message || "Failed to auto-generate summary.");
           }
         } finally {
-          if (active) {
-            setIsGeneratingExecSummary(false);
-          }
+          generatingRef.current = false;
+          setIsGeneratingExecSummary(false);
         }
       };
       autoGenerate();
@@ -521,6 +522,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
   }, [digest.id, digest.executiveSummary, digest.messages, onSaveDigest]);
 
   const handleManualRegenerateExecSummary = async () => {
+    generatingRef.current = true;
     setIsGeneratingExecSummary(true);
     setExecSummaryError(null);
     setIsEditingExecSummary(false);
@@ -550,6 +552,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
       console.error(err);
       setExecSummaryError(err.message || 'Failed to manually regenerate executive summary.');
     } finally {
+      generatingRef.current = false;
       setIsGeneratingExecSummary(false);
     }
   };
