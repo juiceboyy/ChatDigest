@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Plus, History, MessageSquare, ShieldAlert, CheckCircle2, Cloud,
   Cpu, FileCode, CheckSquare, RefreshCw, Layers, LogIn, LogOut, ShieldCheck, User as UserIcon,
@@ -34,8 +34,6 @@ export default function App() {
       return 'en';
     }
   });
-  const [translating, setTranslating] = useState(false);
-  const prevLanguageRef = useRef<Language>(language);
   const [sidebarOpen, setSidebarOpen] = useState(false); // Collapsed on mobile by default
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
@@ -59,60 +57,6 @@ export default function App() {
       localStorage.setItem("chatdigest_language", language);
     } catch (e) {}
   }, [language]);
-
-  // Dynamic active digest translation effect
-  useEffect(() => {
-    const prevLanguage = prevLanguageRef.current;
-    prevLanguageRef.current = language;
-
-    if (prevLanguage !== language && activeDigest) {
-      const translateActiveDigest = async () => {
-        setTranslating(true);
-        try {
-          const response = await fetch('/api/translate', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              summary: activeDigest.summary,
-              executiveSummary: activeDigest.executiveSummary,
-              decisions: activeDigest.decisions,
-              actionItems: activeDigest.actionItems,
-              language: language
-            }),
-          });
-          if (!response.ok) {
-            throw new Error("Translation failed");
-          }
-          const data = await response.json();
-          
-          const updatedDigest: ChatDigestData = {
-            ...activeDigest,
-            summary: data.summary,
-            executiveSummary: data.executiveSummary,
-            decisions: data.decisions,
-            actionItems: data.actionItems,
-          };
-          
-          // Save and update state
-          setDigests((prev) => prev.map((d) => (d.id === updatedDigest.id ? updatedDigest : d)));
-          setActiveDigest(updatedDigest);
-          await saveDigest(updatedDigest);
-          if (getCurrentUid()) {
-            saveFirestoreDigest(updatedDigest).catch(err => {
-              console.warn("Background Firestore translate sync failed:", err);
-            });
-          }
-        } catch (err) {
-          console.error("Failed to translate active digest:", err);
-        } finally {
-          setTranslating(false);
-        }
-      };
-      translateActiveDigest();
-    }
-  }, [language, activeDigest]);
 
   const [dbError, setDbError] = useState<string | null>(null);
   
@@ -610,11 +554,6 @@ export default function App() {
             <div className="h-96 flex flex-col items-center justify-center gap-3 animate-pulse text-gray-500" id="main-loader-state">
               <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
               <p className="text-xs font-semibold tracking-wider font-mono">LOADING LOCAL PLATFORM...</p>
-            </div>
-          ) : translating ? (
-            <div className="h-96 flex flex-col items-center justify-center gap-3 animate-pulse text-gray-500" id="translating-loader-state">
-              <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
-              <p className="text-xs font-semibold tracking-wider font-mono uppercase">{getTranslation('translatingDigest', language)}</p>
             </div>
           ) : (
             <div className="max-w-7xl mx-auto px-4 py-8 md:px-8 space-y-8" id="content-container">
