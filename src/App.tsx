@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Plus, History, MessageSquare, ShieldAlert, CheckCircle2, Cloud,
-  Cpu, FileCode, CheckSquare, RefreshCw, Layers, LogIn, LogOut, ShieldCheck, User as UserIcon
+  Cpu, FileCode, CheckSquare, RefreshCw, Layers, LogIn, LogOut, ShieldCheck, User as UserIcon,
+  PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
 import { ChatDigestData } from './types';
 import { initDB, getAllDigests, saveDigest, deleteDigest, updateActionItemStatus, updateActionItemAssignee } from './db';
@@ -25,6 +26,22 @@ export default function App() {
   const [activeDigest, setActiveDigest] = useState<ChatDigestData | null>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false); // Collapsed on mobile by default
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      const saved = localStorage.getItem("desktop_sidebar_collapsed");
+      return saved ? JSON.parse(saved) === true : false;
+    } catch (e) {
+      return false;
+    }
+  });
+
+  // Persist sidebar collapse state
+  useEffect(() => {
+    try {
+      localStorage.setItem("desktop_sidebar_collapsed", JSON.stringify(sidebarCollapsed));
+    } catch (e) {}
+  }, [sidebarCollapsed]);
+
   const [dbError, setDbError] = useState<string | null>(null);
   
   // Custom Confirmation Dialog State
@@ -310,6 +327,17 @@ export default function App() {
       <header className="sticky top-0 z-40 bg-[#0F0F0F]/95 backdrop-blur-md border-b border-white/10 px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4" id="app-topbar">
         {/* Brand Signage */}
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="hidden lg:flex p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg border border-white/5 hover:border-white/10 transition-all cursor-pointer mr-1"
+            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {sidebarCollapsed ? (
+              <PanelLeftOpen className="w-4 h-4" />
+            ) : (
+              <PanelLeftClose className="w-4 h-4" />
+            )}
+          </button>
           <div className="relative flex items-center justify-center">
             <div className="absolute inset-0 bg-blue-500 rounded-lg blur-md opacity-25"></div>
             <div className="relative p-2 bg-blue-600 text-white rounded-lg border border-white/10 shadow-md">
@@ -404,17 +432,24 @@ export default function App() {
         
         {/* LHS SIDEBAR: Past Imports list */}
         {/* Desktop permanent list */}
-        <div className="hidden lg:block w-76 shrink-0 h-full overflow-hidden" id="desktop-sidebar-pane">
-          <HistorySidebar
-            digests={digests}
-            selectedId={activeDigest?.id || null}
-            onSelect={(d) => {
-              setActiveDigest(d);
-              setSidebarOpen(false);
-            }}
-            onDelete={handleDeleteDigest}
-            onNewImport={handleStartNewImport}
-          />
+        <div 
+          className={`hidden lg:block shrink-0 h-full overflow-hidden transition-all duration-300 ease-in-out ${
+            sidebarCollapsed ? 'w-0' : 'w-76'
+          }`} 
+          id="desktop-sidebar-pane"
+        >
+          <div className="w-76 h-full">
+            <HistorySidebar
+              digests={digests}
+              selectedId={activeDigest?.id || null}
+              onSelect={(d) => {
+                setActiveDigest(d);
+                setSidebarOpen(false);
+              }}
+              onDelete={handleDeleteDigest}
+              onNewImport={handleStartNewImport}
+            />
+          </div>
         </div>
 
         {/* Mobile floating sidebar slide drawer */}
