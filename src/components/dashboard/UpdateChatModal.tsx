@@ -235,7 +235,7 @@ export default function UpdateChatModal({ isOpen, onClose, digest, onSaveDigest,
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0A0A0A]/85 backdrop-blur-md animate-fadeIn" id="update-chat-modal">
+    <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-20 bg-[#0A0A0A]/85 backdrop-blur-md overflow-y-auto animate-fadeIn" id="update-chat-modal">
       <div className="relative w-full max-w-xl bg-[#121212] border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4" onClick={(e) => e.stopPropagation()}>
         <button
           onClick={onClose}
