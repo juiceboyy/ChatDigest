@@ -70,6 +70,18 @@ async function generateContentWithRetry(
 export async function createExpressApp() {
   const app = express();
 
+  app.use((req, res, next) => {
+    const originalUrl = req.url;
+    if (req.url.startsWith("/.netlify/functions/api")) {
+      req.url = req.url.slice("/.netlify/functions/api".length);
+    }
+    if (!req.url.startsWith("/api") && req.url !== "/" && !req.url.startsWith("/?")) {
+      req.url = "/api" + (req.url.startsWith("/") ? req.url : "/" + req.url);
+    }
+    console.log(`[Express Rewrite] Method: ${req.method} | Original: ${originalUrl} -> Rewritten: ${req.url}`);
+    next();
+  });
+
   // Set body parser with high limit for large chat text
   app.use(express.json({ limit: "25mb" }));
 
