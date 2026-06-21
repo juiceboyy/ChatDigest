@@ -182,13 +182,27 @@ export async function getFirestoreDigests(): Promise<ChatDigestData[]> {
   const uid = getCurrentUid();
   if (!uid) return [];
 
+  // Helper to filter out deleted digests locally
+  const filterDeleted = (list: ChatDigestData[]): ChatDigestData[] => {
+    try {
+      const deletedLocal = localStorage.getItem("deleted_digests_list");
+      if (deletedLocal) {
+        const deletedIds = JSON.parse(deletedLocal) as string[];
+        return list.filter(d => !deletedIds.includes(d.id));
+      }
+    } catch (e) {
+      console.error("[Firestore] Failed to filter deleted digests:", e);
+    }
+    return list;
+  };
+
   // Sandbox fallback persistence in localStorage so standard sandbox mode is actual persistent storage!
   if (uid === "sandbox-guest-user-session") {
     const local = localStorage.getItem("sandbox_digests_store");
     if (local) {
       try {
         const parsed = JSON.parse(local) as ChatDigestData[];
-        return parsed.sort((a, b) => b.parsedAt - a.parsedAt);
+        return filterDeleted(parsed).sort((a, b) => b.parsedAt - a.parsedAt);
       } catch (e) {
         console.error("Failed to read sandbox simulated cache", e);
       }
@@ -202,7 +216,7 @@ export async function getFirestoreDigests(): Promise<ChatDigestData[]> {
     const q = query(digestsRef);
     const snapshot = await getDocs(q);
     
-    const results: ChatDigestData[] = [];
+    let results: ChatDigestData[] = [];
     snapshot.forEach((doc) => {
       const data = doc.data() as ChatDigestData;
       results.push({
@@ -231,7 +245,7 @@ export async function getFirestoreDigests(): Promise<ChatDigestData[]> {
       localStorage.setItem(`firestore_mirror_cache_${uid}`, JSON.stringify(results));
     } catch (e) {}
 
-    return results.sort((a, b) => b.parsedAt - a.parsedAt);
+    return filterDeleted(results).sort((a, b) => b.parsedAt - a.parsedAt);
   } catch (error) {
     console.warn("Firestore collection fetch failed (quota or auth issue). Serving cached/local data instead. Details:", error);
     
@@ -240,7 +254,7 @@ export async function getFirestoreDigests(): Promise<ChatDigestData[]> {
     if (local) {
       try {
         const parsed = JSON.parse(local) as ChatDigestData[];
-        return parsed.sort((a, b) => b.parsedAt - a.parsedAt);
+        return filterDeleted(parsed).sort((a, b) => b.parsedAt - a.parsedAt);
       } catch (e) {}
     }
 

@@ -196,6 +196,19 @@ export default function App() {
     console.log(`[App] executeDeleteDigest starting for ID: ${id}`);
     setDeleteConfirmId(null);
     
+    // Track deleted ID locally to prevent any reappearance during active syncs/refreshes
+    try {
+      const deletedLocal = localStorage.getItem("deleted_digests_list");
+      const list = deletedLocal ? JSON.parse(deletedLocal) as string[] : [];
+      if (!list.includes(id)) {
+        list.push(id);
+        localStorage.setItem("deleted_digests_list", JSON.stringify(list));
+      }
+      console.log("[App] Added digest ID to local deleted tracking:", id);
+    } catch (e) {
+      console.error("[App] Failed to write deleted tracking to localStorage:", e);
+    }
+
     // 1. Optimistic UI Update (instant removal from sidebar and dashboard)
     console.log("[App] Performing optimistic UI update");
     const filtered = digests.filter((d) => d.id !== id);

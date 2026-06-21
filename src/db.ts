@@ -48,9 +48,6 @@ export async function saveDigest(data: ChatDigestData): Promise<void> {
   });
 }
 
-/**
- * Retrieves all stored digests from IndexedDB
- */
 export async function getAllDigests(): Promise<ChatDigestData[]> {
   const db = await initDB();
   return new Promise((resolve, reject) => {
@@ -60,7 +57,19 @@ export async function getAllDigests(): Promise<ChatDigestData[]> {
 
     request.onsuccess = () => {
       // Sort digests, newest first
-      const result = (request.result || []) as ChatDigestData[];
+      let result = (request.result || []) as ChatDigestData[];
+      
+      // Filter out deleted digests
+      try {
+        const deletedLocal = localStorage.getItem("deleted_digests_list");
+        if (deletedLocal) {
+          const deletedIds = JSON.parse(deletedLocal) as string[];
+          result = result.filter(d => !deletedIds.includes(d.id));
+        }
+      } catch (e) {
+        console.error("[db] Failed to filter deleted digests:", e);
+      }
+
       result.sort((a, b) => b.parsedAt - a.parsedAt);
       resolve(result);
     };
