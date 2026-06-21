@@ -126,8 +126,29 @@ export async function signInWithGoogle(): Promise<{ success: boolean; isFallback
     const result = await signInWithPopup(auth, googleProvider);
     return { success: true, isFallback: false };
   } catch (err: any) {
-    console.warn("Firebase sign-in popup blocked or failed in sandbox context. Activating premium local guest persistence:", err);
+    console.warn("Firebase sign-in failed:", err);
     
+    const errorCode = err?.code || "";
+    
+    // If the user manually closed the popup or if the domain is not authorized in Firebase Console,
+    // do NOT fall back to sandbox mode. Instead, report the error so the user can address it.
+    if (errorCode === "auth/popup-closed-by-user") {
+      return { 
+        success: false, 
+        isFallback: false, 
+        error: "Sign-in popup was closed before completion. Please try again." 
+      };
+    }
+    
+    if (errorCode === "auth/unauthorized-domain") {
+      const host = window.location.hostname;
+      return { 
+        success: false, 
+        isFallback: false, 
+        error: `Unauthorized Domain: Please add "${host}" to the Authorized Domains list in the Firebase Authentication Console (Authentication > Settings > Authorized Domains).`
+      };
+    }
+
     // Fallback sandbox user session so the user can test persistence seamlessly without third-party cookie blocks!
     mockUser = {
       uid: "sandbox-guest-user-session",

@@ -140,6 +140,8 @@ export default function App() {
       const res = await signInWithGoogle();
       if (res.isFallback) {
         setDbError("Your browser context blocked popup cookies inside the sandboxed frame. Successfully launched safe local sandbox persistence!");
+      } else if (res.error) {
+        setDbError(res.error);
       }
     } catch (e: any) {
       console.error(e);
