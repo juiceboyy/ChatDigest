@@ -87,3 +87,8 @@ export interface PlaybookData {
   plays: PlaybookPlay[];
 }
 
+// ── Convenience aliases used by dashboard sub-components ──────────────────────
+export type DecisionItem = ChatDecision;
+export type MessageItem = ParsedMessage;
+export type ParsedMedia = ParsedMediaItem;
+
