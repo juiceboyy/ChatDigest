@@ -39,8 +39,8 @@ export function extractFramesFromVideo(
           return;
         }
         
-        // Downscale to 540p width to optimize network payload and Gemini token consumption
-        const targetWidth = 540;
+        // Downscale to 480p width to optimize network payload and Gemini token consumption
+        const targetWidth = 480;
         canvas.width = targetWidth;
         canvas.height = (video.videoHeight / video.videoWidth) * targetWidth;
         
@@ -93,7 +93,7 @@ export function extractFramesFromVideo(
           }
 
           if (!isAbsoluteDuplicate && currentTinyData) {
-            const base64 = canvas.toDataURL('image/jpeg', 0.75).split(',')[1];
+            const base64 = canvas.toDataURL('image/jpeg', 0.60).split(',')[1];
             frames.push({
               base64,
               tinyData: currentTinyData

@@ -18,6 +18,18 @@ interface FrameItem {
   tinyData?: Uint8ClampedArray;
 }
 
+// Evenly samples N elements from an array (always keeping the first and last elements)
+function sampleEvenly<T>(array: T[], n: number): T[] {
+  if (array.length <= n) return array;
+  const result: T[] = [];
+  const step = (array.length - 1) / (n - 1);
+  for (let i = 0; i < n; i++) {
+    const index = Math.round(i * step);
+    result.push(array[index]);
+  }
+  return result;
+}
+
 export default function VideoImportWizard({ files, onParsed, onCancel, language }: VideoImportWizardProps) {
   const [step, setStep] = useState<'init' | 'extracting' | 'review' | 'processing' | 'error'>('init');
   const [frames, setFrames] = useState<FrameItem[]>([]);
@@ -25,7 +37,9 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
   const [customPrompt, setCustomPrompt] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [fps, setFps] = useState<number>(2);
-  const [threshold, setThreshold] = useState<number>(0.07); // Default 7% similarity threshold
+  
+  // Set default threshold to 20% similarity difference as requested by the user
+  const threshold = 0.20;
 
   const file = files[0];
   const isVideo = file && file.type.startsWith('video/');
@@ -81,14 +95,13 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
     }
   }, [step, file, files, isVideo, fps]);
 
-  // Dynamically compute filtered frames based on threshold slider
+  // Compute filtered frames using 20% pixel threshold
   const filteredFrames = useMemo(() => {
     if (frames.length === 0) return [];
     
     const result = [frames[0]];
     let prevTiny = frames[0].tinyData;
     
-    // If frames do not have comparison tinyData (e.g. manually uploaded screenshots), skip filtering
     if (!prevTiny) return frames;
 
     for (let i = 1; i < frames.length; i++) {
@@ -109,7 +122,6 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
       const maxDiff = 32 * 32 * 3 * 255;
       const averageDiff = diffSum / maxDiff;
       
-      // If difference is greater than or equal to threshold, keep it (not duplicate)
       if (averageDiff >= threshold) {
         result.push(currentFrame);
         prevTiny = currentTiny;
@@ -118,12 +130,20 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
     return result;
   }, [frames, threshold]);
 
+  // Cap at a maximum of 8 frames for video to prevent Netlify serverless timeouts
+  const finalFramesToSend = useMemo(() => {
+    if (isVideo) {
+      return sampleEvenly(filteredFrames, 8);
+    }
+    return filteredFrames;
+  }, [filteredFrames, isVideo]);
+
   const handleDeleteFrame = (id: string) => {
     setFrames((prev) => prev.filter((f) => f.id !== id));
   };
 
   const handleProcessChat = async () => {
-    if (filteredFrames.length === 0) {
+    if (finalFramesToSend.length === 0) {
       setErrorMessage('Please upload or extract at least one chat frame.');
       setStep('error');
       return;
@@ -139,7 +159,7 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          frames: filteredFrames.map((f) => f.base64),
+          frames: finalFramesToSend.map((f) => f.base64),
           userPrompt: customPrompt.trim() || undefined,
           language,
         }),
@@ -231,50 +251,30 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
             <p className="text-xs text-gray-400 leading-relaxed font-light">{getTranslation('reviewFramesDesc', language)}</p>
           </div>
 
-          {/* DYNAMIC DEDUPLICATION SLIDER (Video Mode only) */}
+          {/* DEDUPLICATION STATS INFO BANNER (Video Mode only) */}
           {isVideo && frames.length > 0 && (
-            <div className="bg-[#0A0A0A] border border-white/5 p-4 rounded-xl space-y-3 text-left">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <h5 className="text-xs font-bold uppercase tracking-wider text-gray-300">
-                    {language === 'nl' ? 'Deduplicatie Gevoeligheid' : 'Deduplication Sensitivity'}
-                  </h5>
-                  <p className="text-[10px] text-gray-500 font-light mt-0.5">
-                    {language === 'nl' 
-                      ? 'Sleep de schuifregelaar om de drempelwaarde aan te passen. Hogere waarden filteren meer overlap weg.' 
-                      : 'Drag the slider to adjust sensitivity. Higher values filter out more overlapping content.'}
-                  </p>
-                </div>
-                <div className="text-[10px] font-mono font-bold bg-blue-500/10 text-blue-400 border border-blue-500/15 px-2.5 py-1 rounded-lg shrink-0">
-                  {Math.round(threshold * 100)}% {language === 'nl' ? 'Drempel' : 'Threshold'}
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <input
-                  type="range"
-                  min="0.01"
-                  max="0.20"
-                  step="0.005"
-                  value={threshold}
-                  onChange={(e) => setThreshold(parseFloat(e.target.value))}
-                  className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-500 focus:outline-none"
-                />
-              </div>
-              <div className="flex items-center justify-between text-[9px] text-gray-500 font-mono">
-                <span>{language === 'nl' ? '1% (Meer overlap behouden)' : '1% (Keep more overlap)'}</span>
-                <span className="text-blue-450 font-bold bg-blue-500/5 px-2 py-0.5 rounded border border-blue-500/10">
+            <div className="bg-[#0A0A0A] border border-white/5 p-3.5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left">
+              <div>
+                <h5 className="text-xs font-bold text-gray-300">
+                  {language === 'nl' ? 'Automatische Ontdubbeling Actief' : 'Automatic Deduplication Active'}
+                </h5>
+                <p className="text-[10px] text-gray-500 font-light mt-0.5">
                   {language === 'nl' 
-                    ? `${filteredFrames.length} frames geselecteerd van de ${frames.length}` 
-                    : `${filteredFrames.length} frames selected out of ${frames.length}`}
-                </span>
-                <span>{language === 'nl' ? '20% (Agressief filteren)' : '20% (Aggressive filtering)'}</span>
+                    ? 'Frames worden lokaal vergeleken op een drempelwaarde van 20%. We selecteren maximaal 8 frames om uitsluitingen te voorkomen.' 
+                    : 'Frames are compared locally at a 20% difference threshold. Max 8 frames are sent to prevent server timeouts.'}
+                </p>
               </div>
+              <span className="text-[10px] font-mono font-bold bg-blue-500/10 text-blue-400 border border-blue-500/15 px-3 py-1 rounded-lg shrink-0 self-start sm:self-center">
+                {language === 'nl' 
+                  ? `${finalFramesToSend.length} frames behouden van de ${frames.length}` 
+                  : `${finalFramesToSend.length} frames kept out of ${frames.length}`}
+              </span>
             </div>
           )}
 
           {/* Grid of frames */}
           <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4 max-h-[360px] overflow-y-auto custom-scrollbar p-1 border border-white/5 rounded-xl bg-[#0A0A0A]">
-            {filteredFrames.map((frame, index) => (
+            {finalFramesToSend.map((frame, index) => (
               <div key={frame.id} className="relative group rounded-lg overflow-hidden border border-white/10 hover:border-blue-500/50 bg-[#121212] aspect-[9/16] transition-all">
                 <img
                   src={`data:image/jpeg;base64,${frame.base64}`}
@@ -322,7 +322,7 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
               </button>
               <button
                 onClick={handleProcessChat}
-                disabled={filteredFrames.length === 0}
+                disabled={finalFramesToSend.length === 0}
                 className="px-5 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800/30 text-white font-semibold text-xs tracking-wider uppercase rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed shadow-md"
               >
                 <Sparkles className="w-3.5 h-3.5" />
