@@ -2342,7 +2342,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
           id="item-detail-modal-overlay"
         >
           <div 
-            className="bg-[#121212] border border-white/10 rounded-xl p-6 max-w-xl w-full text-left shadow-2xl relative animate-slideRight space-y-4"
+            className="bg-[#121212] border border-white/10 rounded-xl p-6 max-w-xl w-full text-left text-white shadow-2xl relative animate-slideRight space-y-4"
             onClick={(e) => e.stopPropagation()}
             id="item-detail-modal-container"
           >
@@ -2484,7 +2484,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
           id="commit-decision-modal-overlay"
         >
           <div 
-            className="bg-[#121212] border border-white/10 rounded-xl p-6 max-w-2xl w-full text-left shadow-2xl relative animate-slideRight space-y-5"
+            className="bg-[#121212] border border-white/10 rounded-xl p-6 max-w-2xl w-full text-left text-white shadow-2xl relative animate-slideRight space-y-5"
             onClick={(e) => e.stopPropagation()}
             id="commit-decision-modal-container"
           >
