@@ -195,24 +195,27 @@ export default function App() {
   const executeDeleteDigest = async (id: string) => {
     console.log(`[App] executeDeleteDigest starting for ID: ${id}`);
     setDeleteConfirmId(null);
+    
+    // 1. Optimistic UI Update (instant removal from sidebar and dashboard)
+    console.log("[App] Performing optimistic UI update");
+    const filtered = digests.filter((d) => d.id !== id);
+    setDigests(filtered);
+    if (activeDigest?.id === id) {
+      console.log("[App] Deleted active digest; updating activeDigest selection");
+      setActiveDigest(filtered.length > 0 ? filtered[0] : null);
+    }
+
+    // 2. Perform database deletes in the background
     try {
       if (getCurrentUid()) {
-        console.log(`[App] Deleting Cloud/Sandbox Digest with UID: ${getCurrentUid()}`);
+        console.log(`[App] Deleting Cloud/Sandbox Digest in background with UID: ${getCurrentUid()}`);
         await deleteFirestoreDigest(id);
       } else {
-        console.log("[App] Deleting local IndexedDB digest offline");
+        console.log("[App] Deleting local IndexedDB digest offline in background");
         await deleteDigest(id);
       }
     } catch (err) {
       console.error("[App] Failed to delete digest database record:", err);
-    } finally {
-      console.log("[App] Updating React state for digests");
-      const filtered = digests.filter((d) => d.id !== id);
-      setDigests(filtered);
-      if (activeDigest?.id === id) {
-        console.log("[App] Deleted active digest; updating activeDigest selection");
-        setActiveDigest(filtered.length > 0 ? filtered[0] : null);
-      }
     }
   };
 
