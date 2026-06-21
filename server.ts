@@ -3,6 +3,7 @@ import path from "path";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 
+dotenv.config({ path: ".env.local" });
 dotenv.config();
 
 async function generateContentWithRetry(
@@ -148,11 +149,11 @@ Please analyze the discussions and output the result in structured JSON. Include
             properties: {
               summary: {
                 type: Type.STRING,
-                description: "Deep analytical executive summary in beautiful markdown. Put terms of note or project names in bold styling. 3 paragraphs minimum."
+                description: `Deep analytical executive summary in beautiful markdown. MUST BE WRITTEN ENTIRELY IN ${language === 'nl' ? 'Dutch (Nederlands)' : 'English'}. Put terms of note or project names in bold styling. 3 paragraphs minimum.`
               },
               executiveSummary: {
                 type: Type.STRING,
-                description: "A highly polished, concise 2 to 3 sentence executive summary of the entire conversation. Exactly 2-3 sentences."
+                description: `A highly polished, concise 2 to 3 sentence executive summary of the entire conversation. MUST BE WRITTEN ENTIRELY IN ${language === 'nl' ? 'Dutch (Nederlands)' : 'English'}. Exactly 2-3 sentences.`
               },
               keywords: {
                 type: Type.ARRAY,
@@ -165,7 +166,7 @@ Please analyze the discussions and output the result in structured JSON. Include
                   type: Type.OBJECT,
                   properties: {
                     sender: { type: Type.STRING, description: "Name of the participant proposing, agreeing, or certifying the decision." },
-                    text: { type: Type.STRING, description: "Detailed, concrete decision or agreement statement." },
+                    text: { type: Type.STRING, description: `Detailed, concrete decision or agreement statement. MUST BE WRITTEN ENTIRELY IN ${language === 'nl' ? 'Dutch (Nederlands)' : 'English'}.` },
                     dateStr: { 
                       type: Type.STRING, 
                       description: "The actual date when the chat message containing this consensus was sent (obtained ONLY from the bracketed metadata, e.g. '[2026-06-20...]'). ABSOLUTELY NEVER use future event dates mentioned relative to the text contents (like June 27, 2026). This must be <= " + todayStr
@@ -180,7 +181,7 @@ Please analyze the discussions and output the result in structured JSON. Include
                   type: Type.OBJECT,
                   properties: {
                     sender: { type: Type.STRING, description: "Name of the person assigned or responsible. Defaults to 'The Group' if general." },
-                    text: { type: Type.STRING, description: "Explicit task definition with execution detail." },
+                    text: { type: Type.STRING, description: `Explicit task definition with execution detail. MUST BE WRITTEN ENTIRELY IN ${language === 'nl' ? 'Dutch (Nederlands)' : 'English'}.` },
                     dateStr: { 
                       type: Type.STRING, 
                       description: "The actual date when the message containing this request was sent (obtained ONLY from the bracketed metadata, e.g. '[2026-06-20...]'). ABSOLUTELY NEVER use future event dates mentioned relative to the text contents (like June 27, 2026). This must be <= " + todayStr
