@@ -93,7 +93,7 @@ export function exportDigestToPdf(digest: ChatDigestData): void {
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(24);
   doc.setTextColor(30, 41, 59); // deep slate slate-800
-  doc.text('ChatDigest Report', margin, y + 8);
+  doc.text(digest.title || 'ChatDigest Report', margin, y + 8);
   y += 14;
 
   // File Details Badge
@@ -300,7 +300,8 @@ export function exportDigestToPdf(digest: ChatDigestData): void {
   doc.text('Report compiled completely client-side. ChatDigest protects your conversations.', margin, y);
 
   // Trigger download
-  doc.save(`ChatDigest_${digest.fileName.split('.')[0] || 'Report'}.pdf`);
+  const safeTitle = (digest.title || digest.fileName.split('.')[0] || 'Report').replace(/[^a-zA-Z0-9_\-]/g, '_');
+  doc.save(`ChatDigest_${safeTitle}.pdf`);
 }
 
 export function exportPlaybookToPdf(digest: ChatDigestData): void {
@@ -513,6 +514,6 @@ export function exportPlaybookToPdf(digest: ChatDigestData): void {
   doc.text('Playbook compiled completely client-side. ChatDigest protects your conversations.', margin, y);
 
   // Trigger download
-  const safeTitle = digest.fileName.split('.')[0] || 'Playbook';
+  const safeTitle = (digest.title || digest.fileName.split('.')[0] || 'Playbook').replace(/[^a-zA-Z0-9_\-]/g, '_');
   doc.save(`Operational_Playbook_${safeTitle}.pdf`);
 }

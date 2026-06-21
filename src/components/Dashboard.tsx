@@ -869,8 +869,13 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
             </span>
           </div>
           <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-            {digest.fileName}
+            {digest.title || digest.fileName}
           </h1>
+          {digest.title && (
+            <p className="text-[10px] text-gray-500 font-mono tracking-wider">
+              FILE: {digest.fileName}
+            </p>
+          )}
           <p className="text-xs text-gray-400 font-light flex items-center gap-4">
             <span className="flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-blue-400" />

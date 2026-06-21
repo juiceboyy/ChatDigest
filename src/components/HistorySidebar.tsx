@@ -1,5 +1,5 @@
-import React from 'react';
-import { History, FileText, Trash2, Calendar, MessageSquare, Plus, Check } from 'lucide-react';
+import React, { useState } from 'react';
+import { History, FileText, Trash2, Calendar, MessageSquare, Plus, Check, Pencil, X } from 'lucide-react';
 import { ChatDigestData } from '../types';
 
 interface HistorySidebarProps {
@@ -8,6 +8,7 @@ interface HistorySidebarProps {
   onSelect: (digest: ChatDigestData) => void;
   onDelete: (id: string) => void;
   onNewImport: () => void;
+  onRename?: (id: string, newTitle: string) => void;
 }
 
 function formatBytes(bytes: number): string {
@@ -24,7 +25,18 @@ export default function HistorySidebar({
   onSelect,
   onDelete,
   onNewImport,
+  onRename,
 }: HistorySidebarProps) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState<string>('');
+
+  const handleSaveRename = (id: string) => {
+    if (editValue.trim() && onRename) {
+      onRename(id, editValue.trim());
+    }
+    setEditingId(null);
+  };
+
   return (
     <div className="flex flex-col h-full bg-[#121212] border-r border-white/10 animate-fadeIn" id="history-sidebar">
       {/* Sidebar Header */}
@@ -74,31 +86,79 @@ export default function HistorySidebar({
                 }`}
                 id={`sidebar-item-${digest.id}`}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-2.5 min-w-0">
+                 <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2.5 min-w-0 flex-1">
                     <div className={`mt-0.5 p-1.5 rounded ${isActive ? 'bg-blue-600/10 border border-blue-500/20 text-blue-400' : 'bg-white/3 border border-white/5 text-gray-400'}`}>
                       <FileText className="w-3.5 h-3.5" />
                     </div>
-                    <div className="truncate min-w-0">
-                      <h4 className={`text-xs font-semibold truncate ${isActive ? 'text-blue-100' : 'text-gray-300'}`}>
-                        {digest.fileName.replace('.txt', '')}
-                      </h4>
-                      <p className="text-[10px] text-gray-500 mt-0.5 truncate uppercase tracking-widest font-mono">
-                        {formatBytes(digest.fileSize)}
-                      </p>
-                    </div>
+                    {editingId === digest.id ? (
+                      <div className="flex items-center gap-1.5 w-full" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="text"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              handleSaveRename(digest.id);
+                            } else if (e.key === 'Escape') {
+                              setEditingId(null);
+                            }
+                          }}
+                          className="bg-[#1a1a1a] text-white text-xs font-semibold px-2 py-1 rounded border border-blue-500/50 focus:outline-none focus:border-blue-500 w-full"
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => handleSaveRename(digest.id)}
+                          className="p-1 hover:bg-[#1f2937]/50 hover:text-emerald-400 text-gray-400 rounded transition-colors shrink-0"
+                          title="Save"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setEditingId(null)}
+                          className="p-1 hover:bg-[#1f2937]/50 hover:text-rose-400 text-gray-400 rounded transition-colors shrink-0"
+                          title="Cancel"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="truncate min-w-0">
+                        <h4 className={`text-xs font-semibold truncate ${isActive ? 'text-blue-100' : 'text-gray-300'}`}>
+                          {digest.title || digest.fileName.replace('.txt', '')}
+                        </h4>
+                        <p className="text-[10px] text-gray-500 mt-0.5 truncate uppercase tracking-widest font-mono">
+                          {formatBytes(digest.fileSize)}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete(digest.id);
-                    }}
-                    title="Delete record from local drive"
-                    className="opacity-100 lg:opacity-0 lg:group-hover:opacity-100 p-1.5 hover:bg-rose-950/40 hover:text-rose-400 text-gray-400 rounded transition-all duration-200 animate-fadeIn"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  {editingId !== digest.id && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingId(digest.id);
+                          setEditValue(digest.title || digest.fileName.replace('.txt', ''));
+                        }}
+                        title="Rename digest"
+                        className="opacity-100 lg:opacity-0 lg:group-hover:opacity-100 p-1.5 hover:bg-white/10 hover:text-blue-400 text-gray-400 rounded transition-all duration-200"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(digest.id);
+                        }}
+                        title="Delete record from local drive"
+                        className="opacity-100 lg:opacity-0 lg:group-hover:opacity-100 p-1.5 hover:bg-rose-950/40 hover:text-rose-400 text-gray-400 rounded transition-all duration-200 animate-fadeIn"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Micro info bar */}

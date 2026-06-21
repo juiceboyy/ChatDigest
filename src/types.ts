@@ -69,6 +69,7 @@ export interface ChatDigestData {
   zipAttachments?: ZipAttachmentItem[];
   playbook?: PlaybookData;
   isFullyLoaded?: boolean;
+  title?: string;
 }
 
 export interface PlaybookPlay {

@@ -253,6 +253,34 @@ export default function App() {
     }
   };
 
+  // Rename a digest record
+  const handleRenameDigest = useCallback(async (id: string, newTitle: string) => {
+    // 1. Optimistic UI update
+    setDigests((prev) =>
+      prev.map((d) => (d.id === id ? { ...d, title: newTitle } : d))
+    );
+    if (activeDigest?.id === id) {
+      setActiveDigest((prev) => (prev ? { ...prev, title: newTitle } : null));
+    }
+
+    // 2. Persist update in background
+    try {
+      // Find the digest in the digests array
+      const existing = digests.find((d) => d.id === id);
+      if (!existing) return;
+      const updated = { ...existing, title: newTitle };
+      
+      await saveDigest(updated);
+      if (getCurrentUid()) {
+        saveFirestoreDigest(updated).catch(err => {
+          console.warn("Background Firestore rename sync failed:", err);
+        });
+      }
+    } catch (err) {
+      console.error("[App] Failed to save renamed digest:", err);
+    }
+  }, [digests, activeDigest]);
+
   // Update checkbox item state in storage with Firebase support
   const handleUpdateActionItem = useCallback(async (actionItemId: string, completed: boolean) => {
     if (!activeDigest) return;
@@ -448,6 +476,7 @@ export default function App() {
               }}
               onDelete={handleDeleteDigest}
               onNewImport={handleStartNewImport}
+              onRename={handleRenameDigest}
             />
           </div>
         </div>
@@ -471,6 +500,7 @@ export default function App() {
                 }}
                 onDelete={handleDeleteDigest}
                 onNewImport={handleStartNewImport}
+                onRename={handleRenameDigest}
               />
             </div>
           </div>
