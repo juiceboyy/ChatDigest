@@ -95,14 +95,14 @@ export default function HistorySidebar({
                       onDelete(digest.id);
                     }}
                     title="Delete record from local drive"
-                    className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-rose-950/40 hover:text-rose-400 text-gray-505 rounded transition-all duration-200 animate-fadeIn"
+                    className="opacity-100 lg:opacity-0 lg:group-hover:opacity-100 p-1.5 hover:bg-rose-950/40 hover:text-rose-400 text-gray-400 rounded transition-all duration-200 animate-fadeIn"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
                 {/* Micro info bar */}
-                <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center justify-between text-[10px] text-gray-505 font-light">
+                <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center justify-between text-[10px] text-gray-400 font-light">
                   <span className="flex items-center gap-1 text-gray-500">
                     <Calendar className="w-3 h-3 text-gray-600" />
                     {digest.startDateStr === digest.endDateStr ? digest.startDateStr : `${digest.startDateStr.split(',')[0]} - ${digest.endDateStr.split(',')[0]}`}

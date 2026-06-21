@@ -197,21 +197,12 @@ export default function App() {
     try {
       if (getCurrentUid()) {
         await deleteFirestoreDigest(id);
-        const stored = await getFirestoreDigests();
-        setDigests(stored);
-        if (activeDigest?.id === id) {
-          setActiveDigest(stored.length > 0 ? stored[0] : null);
-        }
       } else {
         await deleteDigest(id);
-        const stored = await getAllDigests();
-        setDigests(stored);
-        if (activeDigest?.id === id) {
-          setActiveDigest(stored.length > 0 ? stored[0] : null);
-        }
       }
     } catch (err) {
-      console.error(err);
+      console.error("Failed to delete digest:", err);
+    } finally {
       setDigests((prev) => {
         const filtered = prev.filter((d) => d.id !== id);
         if (activeDigest?.id === id) {
