@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Plus, History, MessageSquare, ShieldAlert, CheckCircle2, Cloud,
   Cpu, FileCode, CheckSquare, RefreshCw, Layers, LogIn, LogOut, ShieldCheck, User as UserIcon
@@ -164,29 +164,32 @@ export default function App() {
   };
 
   // Save new digest
-  const handleParsed = async (data: ChatDigestData) => {
+  const handleParsed = useCallback(async (data: ChatDigestData) => {
     const fullData = { ...data, isFullyLoaded: true };
     try {
+      // 1. Update UI state optimistically and immediately
+      setDigests((prev) => [fullData, ...prev].filter((d, i, self) => self.findIndex(x => x.id === d.id) === i));
+      setActiveDigest(fullData);
+      
+      // 2. Save locally to IndexedDB first (fast)
+      await saveDigest(fullData);
+      
+      // 3. Sync to Firestore in the background if logged in (non-blocking!)
       if (getCurrentUid()) {
-        await saveFirestoreDigest(fullData);
-        const stored = await getFirestoreDigests();
-        setDigests(stored);
-        setActiveDigest(fullData);
-      } else {
-        await saveDigest(fullData);
-        const stored = await getAllDigests();
-        setDigests(stored);
-        setActiveDigest(fullData);
+        saveFirestoreDigest(fullData).catch(err => {
+          console.warn("Background Firestore sync failed:", err);
+        });
       }
+      
       // Close sidebar drawer if open on mobile
       setSidebarOpen(false);
     } catch (err: any) {
-      console.error(err);
-      // Fallback state update
+      console.error("Failed to save parsed digest:", err);
+      // Fallback state update just in case
       setDigests((prev) => [fullData, ...prev].filter((d, i, self) => self.findIndex(x => x.id === d.id) === i));
       setActiveDigest(fullData);
     }
-  };
+  }, []);
 
   // Delete a digest record
   const handleDeleteDigest = (id: string) => {
@@ -234,7 +237,7 @@ export default function App() {
   };
 
   // Update checkbox item state in storage with Firebase support
-  const handleUpdateActionItem = async (actionItemId: string, completed: boolean) => {
+  const handleUpdateActionItem = useCallback(async (actionItemId: string, completed: boolean) => {
     if (!activeDigest) return;
 
     const updatedDigest = {
@@ -244,27 +247,24 @@ export default function App() {
       )
     };
 
+    // Update state immediately
+    setDigests((prev) => prev.map((d) => (d.id === updatedDigest.id ? updatedDigest : d)));
+    setActiveDigest(updatedDigest);
+
     try {
+      await saveDigest(updatedDigest);
       if (getCurrentUid()) {
-        await saveFirestoreDigest(updatedDigest);
-        setDigests((prev) => prev.map((d) => (d.id === updatedDigest.id ? updatedDigest : d)));
-        setActiveDigest(updatedDigest);
-      } else {
-        const updated = await updateActionItemStatus(activeDigest.id, actionItemId, completed);
-        if (updated) {
-          setDigests((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
-          setActiveDigest(updated);
-        }
+        saveFirestoreDigest(updatedDigest).catch(err => {
+          console.warn("Background Firestore action item update failed:", err);
+        });
       }
     } catch (err) {
       console.error(err);
-      setDigests((prev) => prev.map((d) => (d.id === updatedDigest.id ? updatedDigest : d)));
-      setActiveDigest(updatedDigest);
     }
-  };
+  }, [activeDigest]);
 
   // Update assignee in storage with Firebase support
-  const handleUpdateActionItemAssignee = async (actionItemId: string, assignee: string) => {
+  const handleUpdateActionItemAssignee = useCallback(async (actionItemId: string, assignee: string) => {
     if (!activeDigest) return;
 
     const updatedDigest = {
@@ -274,24 +274,21 @@ export default function App() {
       )
     };
 
+    // Update state immediately
+    setDigests((prev) => prev.map((d) => (d.id === updatedDigest.id ? updatedDigest : d)));
+    setActiveDigest(updatedDigest);
+
     try {
+      await saveDigest(updatedDigest);
       if (getCurrentUid()) {
-        await saveFirestoreDigest(updatedDigest);
-        setDigests((prev) => prev.map((d) => (d.id === updatedDigest.id ? updatedDigest : d)));
-        setActiveDigest(updatedDigest);
-      } else {
-        const updated = await updateActionItemAssignee(activeDigest.id, actionItemId, assignee);
-        if (updated) {
-          setDigests((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
-          setActiveDigest(updated);
-        }
+        saveFirestoreDigest(updatedDigest).catch(err => {
+          console.warn("Background Firestore assignee update failed:", err);
+        });
       }
     } catch (err) {
       console.error(err);
-      setDigests((prev) => prev.map((d) => (d.id === updatedDigest.id ? updatedDigest : d)));
-      setActiveDigest(updatedDigest);
     }
-  };
+  }, [activeDigest]);
 
   const handleStartNewImport = () => {
     setActiveDigest(null);

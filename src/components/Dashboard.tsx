@@ -68,12 +68,16 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
     completed?: boolean;
   } | null>(null);
 
-    // Executive 2-3 sentence summary state
+  // Executive 2-3 sentence summary state
   const [isGeneratingExecSummary, setIsGeneratingExecSummary] = useState(false);
   const [execSummaryError, setExecSummaryError] = useState<string | null>(null);
   const [isEditingExecSummary, setIsEditingExecSummary] = useState(false);
   const [editingExecSummaryText, setEditingExecSummaryText] = useState('');
   const generatingRef = React.useRef(false);
+  const onSaveDigestRef = React.useRef(onSaveDigest);
+  React.useEffect(() => {
+    onSaveDigestRef.current = onSaveDigest;
+  }, [onSaveDigest]);
 
   // AI Playbook states
   const [isGeneratingPlaybook, setIsGeneratingPlaybook] = useState(false);
@@ -475,7 +479,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
   // Generate the 2-3 sentence executive summary automatically if missing
   React.useEffect(() => {
     let active = true;
-    if (!digest.executiveSummary && digest.messages.length > 0 && !generatingRef.current) {
+    if (!digest.executiveSummary && digest.messages && digest.messages.length > 0 && !generatingRef.current) {
       const autoGenerate = async () => {
         generatingRef.current = true;
         setIsGeneratingExecSummary(true);
@@ -497,12 +501,12 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
           }
           const data = await response.json();
           if (!active) return;
-          if (data.executiveSummary && onSaveDigest) {
+          if (data.executiveSummary && onSaveDigestRef.current) {
             const updatedDigest: ChatDigestData = {
               ...digest,
               executiveSummary: data.executiveSummary,
             };
-            onSaveDigest(updatedDigest);
+            onSaveDigestRef.current(updatedDigest);
           }
         } catch (err: any) {
           console.error("Auto executive summary generation error:", err);
@@ -519,7 +523,7 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
     return () => {
       active = false;
     };
-  }, [digest.id, digest.executiveSummary, digest.messages, onSaveDigest]);
+  }, [digest.id, digest.executiveSummary, digest.messages?.length]);
 
   const handleManualRegenerateExecSummary = async () => {
     generatingRef.current = true;
