@@ -1,20 +1,31 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Upload, FileText, AlertCircle, Sparkles } from 'lucide-react';
 import JSZip from 'jszip';
 import { parseWhatsAppFile } from '../parser';
 import { ChatDigestData } from '../types';
 import { Language, getTranslation } from '../lib/translations';
+import { identifyNewMessages, mergeMessages, recalculateDigestStats, mergeActionItems, mergeDecisions } from '../lib/merge';
+import UploadTutorial from './UploadTutorial';
 
 interface UploadZoneProps {
   onParsed: (data: ChatDigestData) => void;
   language: Language;
+  digests?: ChatDigestData[];
 }
 
-export default function UploadZone({ onParsed, language }: UploadZoneProps) {
+export default function UploadZone({ onParsed, language, digests = [] }: UploadZoneProps) {
   const [isDragActive, setIsDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
+  const [importMode, setImportMode] = useState<'new' | 'merge'>('new');
+  const [mergeTargetId, setMergeTargetId] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (digests.length > 0 && !mergeTargetId) {
+      setMergeTargetId(digests[0].id);
+    }
+  }, [digests, mergeTargetId]);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -47,11 +58,27 @@ export default function UploadZone({ onParsed, language }: UploadZoneProps) {
           return;
         }
 
-        // Slice messages payload on the client side to avoid HTTP payload size limits (e.g., in nginx or express limits)
+        let messagesToProcess = parsedData.messages;
+        let targetDigest: ChatDigestData | undefined;
+
+        if (importMode === 'merge') {
+          targetDigest = digests.find(d => d.id === mergeTargetId);
+          if (targetDigest) {
+            const newMessages = identifyNewMessages(targetDigest.messages, parsedData.messages);
+            if (newMessages.length === 0) {
+              setError(getTranslation('noNewMessages', language));
+              setParsing(false);
+              return;
+            }
+            messagesToProcess = mergeMessages(targetDigest.messages, parsedData.messages);
+          }
+        }
+
+        // Slice messages payload on the client side to avoid HTTP payload size limits
         const maxMsgsForDigest = 1200;
-        const slicedMessagesForDigest = parsedData.messages.length > maxMsgsForDigest
-          ? parsedData.messages.slice(-maxMsgsForDigest)
-          : parsedData.messages;
+        const slicedMessagesForDigest = messagesToProcess.length > maxMsgsForDigest
+          ? messagesToProcess.slice(-maxMsgsForDigest)
+          : messagesToProcess;
 
         // Fetch the premium Gemini AI digest analysis from the backend server
         const response = await fetch('/api/digest', {
@@ -85,26 +112,40 @@ export default function UploadZone({ onParsed, language }: UploadZoneProps) {
 
         const geminiDigest = await response.json();
 
-        // Merge beautiful Gemini analysis with deterministic local analytics
-        const finalData: ChatDigestData = {
-          ...parsedData,
-          summary: geminiDigest.summary,
-          keywords: geminiDigest.keywords,
-          decisions: geminiDigest.decisions.map((d: any, i: number) => ({
-            id: `dec-g-${i}-${Date.now()}`,
-            sender: d.sender,
-            text: d.text,
-            dateStr: d.dateStr,
-          })),
-          actionItems: geminiDigest.actionItems.map((a: any, i: number) => ({
-            id: `act-g-${i}-${Date.now()}`,
-            sender: a.sender,
-            text: a.text,
-            dateStr: a.dateStr,
-            completed: false,
-          })),
-          zipAttachments,
-        };
+        let finalData: ChatDigestData;
+
+        if (importMode === 'merge' && targetDigest) {
+          const statsDigest = recalculateDigestStats(targetDigest, messagesToProcess, name, size, zipAttachments);
+          finalData = {
+            ...statsDigest,
+            summary: geminiDigest.summary,
+            executiveSummary: geminiDigest.executiveSummary,
+            keywords: geminiDigest.keywords,
+            decisions: mergeDecisions(targetDigest.decisions, geminiDigest.decisions),
+            actionItems: mergeActionItems(targetDigest.actionItems, geminiDigest.actionItems),
+          };
+        } else {
+          finalData = {
+            ...parsedData,
+            summary: geminiDigest.summary,
+            executiveSummary: geminiDigest.executiveSummary,
+            keywords: geminiDigest.keywords,
+            decisions: geminiDigest.decisions.map((d: any, i: number) => ({
+              id: `dec-g-${i}-${Date.now()}`,
+              sender: d.sender,
+              text: d.text,
+              dateStr: d.dateStr,
+            })),
+            actionItems: geminiDigest.actionItems.map((a: any, i: number) => ({
+              id: `act-g-${i}-${Date.now()}`,
+              sender: a.sender,
+              text: a.text,
+              dateStr: a.dateStr,
+              completed: false,
+            })),
+            zipAttachments,
+          };
+        }
 
         onParsed(finalData);
       } catch (err: any) {
@@ -117,8 +158,6 @@ export default function UploadZone({ onParsed, language }: UploadZoneProps) {
     if (isZip) {
       try {
         const zip = await JSZip.loadAsync(file);
-        
-        // Find .txt files
         const txtFiles = Object.keys(zip.files).filter(name => name.endsWith('.txt') && !name.startsWith('__MACOSX/') && !zip.files[name].dir);
         if (txtFiles.length === 0) {
           setError('Could not find any .txt chat history file in the uploaded ZIP archive.');
@@ -126,7 +165,6 @@ export default function UploadZone({ onParsed, language }: UploadZoneProps) {
           return;
         }
 
-        // Find '_chat.txt' if available, otherwise just pick the largest one.
         let chatFileName = txtFiles.find(name => name.toLowerCase().endsWith('_chat.txt'));
         if (!chatFileName) {
           let largestSize = -1;
@@ -146,7 +184,6 @@ export default function UploadZone({ onParsed, language }: UploadZoneProps) {
         const chatFileEntry = zip.files[chatFileName];
         const rawText = await chatFileEntry.async('string');
 
-        // Extract media items
         const supportedMediaExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'mp3', 'wav', 'ogg', 'm4a', 'aac', 'pdf'];
         const zipAttachments: any[] = [];
 
@@ -239,6 +276,56 @@ export default function UploadZone({ onParsed, language }: UploadZoneProps) {
 
   return (
     <div className="w-full max-w-2xl mx-auto" id="upload-zone-container">
+      {digests && digests.length > 0 && (
+        <div className="mb-6 bg-[#121212] border border-white/5 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left animate-fadeIn">
+          <div className="space-y-0.5">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-300">Import Option</h4>
+            <p className="text-[10px] text-gray-500 font-light">Create a new digest or append to an existing one.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 select-none">
+              <button
+                type="button"
+                onClick={() => setImportMode('new')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                  importMode === 'new' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                {getTranslation('importOptionNew', language)}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setImportMode('merge');
+                  if (!mergeTargetId && digests.length > 0) {
+                    setMergeTargetId(digests[0].id);
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                  importMode === 'merge' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                {getTranslation('importOptionMerge', language)}
+              </button>
+            </div>
+
+            {importMode === 'merge' && (
+              <select
+                value={mergeTargetId}
+                onChange={(e) => setMergeTargetId(e.target.value)}
+                className="bg-[#1a1a1a] text-white text-xs font-semibold px-3 py-2 rounded-xl border border-white/10 focus:outline-none focus:border-blue-500"
+              >
+                {digests.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.title || d.fileName.replace('.txt', '')}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        </div>
+      )}
+
       <div
         id="drag-drop-box"
         onDragEnter={handleDrag}
@@ -246,7 +333,7 @@ export default function UploadZone({ onParsed, language }: UploadZoneProps) {
         onDragLeave={handleDrag}
         onDrop={handleDrop}
         onClick={triggerInput}
-        className={`relative cursor-pointer transition-all duration-300 rounded-xl border border-dashed p-12 text-center flex flex-col items-center justify-center min-h-[340px] group ${
+        className={`relative cursor-pointer transition-all duration-300 rounded-xl border border-dashed p-12 text-center flex flex-col items-center justify-center min-h-[300px] group ${
           isDragActive
             ? 'border-blue-500 bg-blue-950/10'
             : 'border-white/10 bg-[#121212] hover:border-white/20 hover:bg-[#151515]'
@@ -304,18 +391,7 @@ export default function UploadZone({ onParsed, language }: UploadZoneProps) {
         </div>
       )}
 
-      <div className="mt-8 p-5 bg-[#121212] rounded-xl border border-white/5 text-left" id="whatsapp-tutorial">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2 mb-3">
-          <FileText className="w-3.5 h-3.5 text-blue-400" />
-          {getTranslation('howExport', language)}
-        </h4>
-        <ol className="list-decimal list-inside space-y-2 text-xs text-gray-500 leading-relaxed font-light">
-          <li>{getTranslation('step1', language)}</li>
-          <li>{getTranslation('step2', language)}</li>
-          <li>{getTranslation('step3', language)}</li>
-          <li>{getTranslation('step4', language)}</li>
-        </ol>
-      </div>
+      <UploadTutorial language={language} />
     </div>
   );
 }

@@ -1,14 +1,27 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { MessageSquare as MsgIcon } from 'lucide-react';
 import { MessageItem } from '../../types';
 
 interface MessagesLogProps {
-  filteredMessages: MessageItem[];
-  totalMessages: number;
+  messages: MessageItem[];
+  searchTerm: string;
+  filterParticipant: string | null;
   firstParticipant: string;
 }
 
-export default function MessagesLog({ filteredMessages, totalMessages, firstParticipant }: MessagesLogProps) {
+export default function MessagesLog({ messages, searchTerm, filterParticipant, firstParticipant }: MessagesLogProps) {
+  const filteredMessages = useMemo(() => {
+    return messages.filter((msg) => {
+      const matchesSearch = searchTerm
+        ? msg.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          msg.sender.toLowerCase().includes(searchTerm.toLowerCase())
+        : true;
+      const matchesParticipant = filterParticipant ? msg.sender === filterParticipant : true;
+      return matchesSearch && matchesParticipant;
+    });
+  }, [messages, searchTerm, filterParticipant]);
+
+  const totalMessages = messages.length;
   return (
     <div className="p-5 bg-[#121212] rounded-xl border border-white/5 shadow-sm" id="chat-messages-browser">
       <div

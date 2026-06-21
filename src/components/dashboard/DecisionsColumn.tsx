@@ -1,21 +1,33 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { CheckCircle2, HelpCircle } from 'lucide-react';
 import { ChatDigestData, DecisionItem } from '../../types';
 import { Language, getTranslation } from '../../lib/translations';
 
 interface DecisionsColumnProps {
   digest: ChatDigestData;
-  filteredDecisions: DecisionItem[];
+  searchTerm: string;
+  filterParticipant: string | null;
   onSelectDetail: (detail: any) => void;
   language: Language;
 }
 
 export default function DecisionsColumn({
   digest,
-  filteredDecisions,
+  searchTerm,
+  filterParticipant,
   onSelectDetail,
   language,
 }: DecisionsColumnProps) {
+  const filteredDecisions = useMemo(() => {
+    return digest.decisions.filter((dec) => {
+      const matchesSearch = searchTerm
+        ? dec.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          dec.sender.toLowerCase().includes(searchTerm.toLowerCase())
+        : true;
+      const matchesParticipant = filterParticipant ? dec.sender === filterParticipant : true;
+      return matchesSearch && matchesParticipant;
+    });
+  }, [digest.decisions, searchTerm, filterParticipant]);
   return (
     <div
       className="lg:col-span-4 bg-[#121212] rounded-xl border border-white/5 p-5 flex flex-col h-[540px] hover:border-white/10 transition-colors"

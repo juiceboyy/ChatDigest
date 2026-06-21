@@ -1,25 +1,40 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { CheckSquare, ShieldCheck, HelpCircle } from 'lucide-react';
 import { ActionItem } from '../../types';
 import { Language, getTranslation } from '../../lib/translations';
 
 interface ActionItemsColumnProps {
-  filteredActionItems: ActionItem[];
-  filterOnlyIncompleteActionItems: boolean;
-  onToggleFilter: () => void;
+  actionItems: ActionItem[];
+  searchTerm: string;
+  filterParticipant: string | null;
   onUpdateActionItem: (id: string, completed: boolean) => void;
   onSelectDetail: (detail: any) => void;
   language: Language;
 }
 
 export default function ActionItemsColumn({
-  filteredActionItems,
-  filterOnlyIncompleteActionItems,
-  onToggleFilter,
+  actionItems,
+  searchTerm,
+  filterParticipant,
   onUpdateActionItem,
   onSelectDetail,
   language,
 }: ActionItemsColumnProps) {
+  const [filterOnlyIncompleteActionItems, setFilterOnlyIncompleteActionItems] = useState(false);
+
+  const onToggleFilter = () => setFilterOnlyIncompleteActionItems((p) => !p);
+
+  const filteredActionItems = useMemo(() => {
+    return actionItems.filter((act) => {
+      const matchesSearch = searchTerm
+        ? act.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          act.sender.toLowerCase().includes(searchTerm.toLowerCase())
+        : true;
+      const matchesParticipant = filterParticipant ? act.sender === filterParticipant : true;
+      const matchesComplete = filterOnlyIncompleteActionItems ? !act.completed : true;
+      return matchesSearch && matchesParticipant && matchesComplete;
+    });
+  }, [actionItems, searchTerm, filterParticipant, filterOnlyIncompleteActionItems]);
   return (
     <div
       className="lg:col-span-4 bg-[#121212] rounded-xl border border-white/5 p-5 flex flex-col h-[540px] hover:border-white/10 transition-colors"

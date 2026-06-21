@@ -1,25 +1,44 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Clock, Smile, Meh, Frown } from 'lucide-react';
 import { ChatDigestData, TimelineDataPoint } from '../../types';
 import { Language, getTranslation } from '../../lib/translations';
 
 interface TimelineColumnProps {
   digest: ChatDigestData;
-  totalMessages: number;
-  svgSparklinePoints: { x: number; y: number }[];
-  svgSparklinePointsPath: string;
-  svgSparklineAreaPath: string;
   language: Language;
 }
 
 export default function TimelineColumn({
   digest,
-  totalMessages,
-  svgSparklinePoints,
-  svgSparklinePointsPath,
-  svgSparklineAreaPath,
   language,
 }: TimelineColumnProps) {
+  const totalMessages = digest.messages.length;
+
+  const svgSparklinePoints = useMemo(() => {
+    const list = digest.timeline;
+    if (list.length <= 1) return [];
+    const paddingX = 25, paddingY = 20;
+    const chartWidth = 500 - paddingX * 2;
+    const chartHeight = 120 - paddingY * 2;
+    const stepX = chartWidth / (list.length - 1);
+    return list.map((node, i) => ({
+      x: paddingX + i * stepX,
+      y: paddingY + ((1 - node.avgSentiment) / 2) * chartHeight,
+    }));
+  }, [digest.timeline]);
+
+  const svgSparklinePointsPath = useMemo(() => {
+    if (svgSparklinePoints.length === 0) return '';
+    return svgSparklinePoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  }, [svgSparklinePoints]);
+
+  const svgSparklineAreaPath = useMemo(() => {
+    if (svgSparklinePoints.length === 0) return '';
+    const start = `M ${svgSparklinePoints[0].x} 100`;
+    const line = svgSparklinePoints.map((p) => `L ${p.x} ${p.y}`).join(' ');
+    const end = `L ${svgSparklinePoints[svgSparklinePoints.length - 1].x} 100 Z`;
+    return `${start} ${line} ${end}`;
+  }, [svgSparklinePoints]);
   return (
     <div
       className="lg:col-span-4 bg-[#121212] rounded-xl border border-white/5 p-5 flex flex-col h-[540px] hover:border-white/10 transition-colors"

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ChatDigestData } from '../types';
 import { initDB, getAllDigests, saveDigest, deleteDigest } from '../db';
 import {

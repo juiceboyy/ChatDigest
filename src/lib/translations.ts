@@ -135,7 +135,16 @@ export const translations = {
     dateLabel: "Date",
     addedByLabel: "Added by",
     assignedToLabel: "Assigned to",
-    actionItemLabel: "Action Item"
+    actionItemLabel: "Action Item",
+    importOptionNew: "Import as new digest",
+    importOptionMerge: "Merge into an existing digest",
+    selectDigestToMerge: "Select digest to merge into",
+    updateChat: "Update Chat",
+    updateDigestTitle: "Update Digest with Latest Export",
+    updateDigestDesc: "Upload the latest WhatsApp export file to identify new messages and append them to this digest.",
+    noNewMessages: "No new messages found. This digest is already up to date!",
+    newMessagesFound: "Found {count} new messages. Merging and updating...",
+    mergingAndResynthesizing: "Merging & Re-Synthesizing with Gemini..."
   },
   nl: {
     // App
@@ -271,7 +280,16 @@ export const translations = {
     dateLabel: "Datum",
     addedByLabel: "Toegevoegd door",
     assignedToLabel: "Toegewezen aan",
-    actionItemLabel: "Actiepunt"
+    actionItemLabel: "Actiepunt",
+    importOptionNew: "Als nieuwe digest importeren",
+    importOptionMerge: "Samenvoegen met een bestaande digest",
+    selectDigestToMerge: "Selecteer digest om mee samen te voegen",
+    updateChat: "Chat Bijwerken",
+    updateDigestTitle: "Digest Bijwerken met Nieuwste Export",
+    updateDigestDesc: "Upload het nieuwste WhatsApp-exportbestand om nieuwe berichten te identificeren en aan deze digest toe te voegen.",
+    noNewMessages: "Geen nieuwe berichten gevonden. Deze digest is al up-to-date!",
+    newMessagesFound: "{count} nieuwe berichten gevonden. Samenvoegen en bijwerken...",
+    mergingAndResynthesizing: "Samenvoegen & Opnieuw Synthetiseren met Gemini..."
   }
 };
 

@@ -1,20 +1,23 @@
 import React from 'react';
-import { FileText, Calendar, Users, MessageSquare, Download } from 'lucide-react';
+import { FileText, Calendar, Users, MessageSquare, Download, Upload } from 'lucide-react';
 import { ChatDigestData } from '../../types';
 import { exportDigestToPdf } from '../../lib/pdfExporter';
+import { Language, getTranslation } from '../../lib/translations';
 
 interface DashboardHeaderProps {
   digest: ChatDigestData;
+  onUpdateChat?: () => void;
+  language: Language;
 }
 
-export default function DashboardHeader({ digest }: DashboardHeaderProps) {
+export default function DashboardHeader({ digest, onUpdateChat, language }: DashboardHeaderProps) {
   const participantCount = digest.participants.length;
   const totalMessages = digest.messages.length;
   const startAndEnd = `${digest.startDateStr} - ${digest.endDateStr}`;
 
   return (
     <div
-      className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 bg-[#0F0F0F] rounded-xl border border-white/10 shadow-sm"
+      className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 bg-[#0F0F0F] rounded-xl border border-white/10 shadow-sm animate-fadeIn"
       id="dashboard-header-control"
     >
       <div className="space-y-1">
@@ -50,6 +53,16 @@ export default function DashboardHeader({ digest }: DashboardHeaderProps) {
       </div>
 
       <div className="flex items-center gap-2.5 shrink-0" id="header-action-buttons">
+        {onUpdateChat && (
+          <button
+            onClick={onUpdateChat}
+            className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm transition-colors font-medium flex items-center justify-center gap-2 shadow-lg shadow-blue-600/10"
+            id="update-chat-btn"
+          >
+            <Upload className="w-4 h-4" />
+            {getTranslation('updateChat', language)}
+          </button>
+        )}
         <button
           onClick={() => exportDigestToPdf(digest)}
           className="w-full sm:w-auto px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded text-sm transition-colors font-medium flex items-center justify-center gap-2"
