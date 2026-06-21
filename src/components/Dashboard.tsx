@@ -131,6 +131,14 @@ export default function Dashboard({
     }
   }, [selectedDetail]);
 
+  // Scroll to top when update chat modal opens
+  useEffect(() => {
+    if (isUpdateModalOpen) {
+      const scroller = document.getElementById('main-scroller');
+      if (scroller) scroller.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [isUpdateModalOpen]);
+
   const firstParticipant = digest.participants[0] || '';
 
   return (
