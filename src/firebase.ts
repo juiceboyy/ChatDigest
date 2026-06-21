@@ -199,15 +199,30 @@ export async function getFirestoreDigests(): Promise<ChatDigestData[]> {
   // Sandbox fallback persistence in localStorage so standard sandbox mode is actual persistent storage!
   if (uid === "sandbox-guest-user-session") {
     const local = localStorage.getItem("sandbox_digests_store");
+    let sandboxList: ChatDigestData[] = [];
     if (local) {
       try {
-        const parsed = JSON.parse(local) as ChatDigestData[];
-        return filterDeleted(parsed).sort((a, b) => b.parsedAt - a.parsedAt);
+        sandboxList = JSON.parse(local) as ChatDigestData[];
       } catch (e) {
         console.error("Failed to read sandbox simulated cache", e);
       }
     }
-    return [];
+
+    // Merge with IndexedDB for consistency
+    let localDigests: ChatDigestData[] = [];
+    try {
+      localDigests = await getAllDigests();
+    } catch (e) {}
+
+    const mergedMap = new Map<string, ChatDigestData>();
+    for (const d of localDigests) {
+      mergedMap.set(d.id, d);
+    }
+    for (const d of sandboxList) {
+      mergedMap.set(d.id, d);
+    }
+    const mergedList = Array.from(mergedMap.values());
+    return filterDeleted(mergedList).sort((a, b) => b.parsedAt - a.parsedAt);
   }
 
   const path = `users/${uid}/digests`;
@@ -240,33 +255,58 @@ export async function getFirestoreDigests(): Promise<ChatDigestData[]> {
       }
     }
 
-    // Mirror to localStorage as a redundant snapshot
+    // Merge with local IndexedDB digests to ensure any local-only or not-yet-synced digests are preserved
+    let localDigests: ChatDigestData[] = [];
     try {
-      localStorage.setItem(`firestore_mirror_cache_${uid}`, JSON.stringify(results));
+      localDigests = await getAllDigests();
+    } catch (e) {
+      console.warn("Failed to retrieve local digests for merge:", e);
+    }
+
+    const mergedMap = new Map<string, ChatDigestData>();
+    for (const d of localDigests) {
+      mergedMap.set(d.id, d);
+    }
+    for (const d of results) {
+      mergedMap.set(d.id, d);
+    }
+    const mergedList = Array.from(mergedMap.values());
+
+    // Mirror to localStorage as a redundant snapshot of the merged list
+    try {
+      localStorage.setItem(`firestore_mirror_cache_${uid}`, JSON.stringify(mergedList));
     } catch (e) {}
 
-    return filterDeleted(results).sort((a, b) => b.parsedAt - a.parsedAt);
+    return filterDeleted(mergedList).sort((a, b) => b.parsedAt - a.parsedAt);
   } catch (error) {
     console.warn("Firestore collection fetch failed (quota or auth issue). Serving cached/local data instead. Details:", error);
     
     // Fallback 1: Read from local storage mirrored copy
     const local = localStorage.getItem(`firestore_mirror_cache_${uid}`);
+    let cachedList: ChatDigestData[] = [];
     if (local) {
       try {
-        const parsed = JSON.parse(local) as ChatDigestData[];
-        return filterDeleted(parsed).sort((a, b) => b.parsedAt - a.parsedAt);
+        cachedList = JSON.parse(local) as ChatDigestData[];
       } catch (e) {}
     }
 
     // Fallback 2: Read from local IndexedDB completely offline store
+    let localDigests: ChatDigestData[] = [];
     try {
-      const storedLocal = await getAllDigests();
-      if (storedLocal && storedLocal.length > 0) {
-        return storedLocal;
-      }
+      localDigests = await getAllDigests();
     } catch (e) {}
 
-    return [];
+    // Merge cached and local
+    const mergedMap = new Map<string, ChatDigestData>();
+    for (const d of localDigests) {
+      mergedMap.set(d.id, d);
+    }
+    for (const d of cachedList) {
+      mergedMap.set(d.id, d);
+    }
+    const mergedList = Array.from(mergedMap.values());
+
+    return filterDeleted(mergedList).sort((a, b) => b.parsedAt - a.parsedAt);
   }
 }
 
