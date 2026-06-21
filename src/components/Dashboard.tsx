@@ -494,6 +494,16 @@ export default function Dashboard({ digest, onUpdateActionItem, onUpdateActionIt
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Scroll main container to top when modal opens so it's always visible
+  React.useEffect(() => {
+    if (selectedDetail) {
+      const scroller = document.getElementById('main-scroller');
+      if (scroller) {
+        scroller.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  }, [selectedDetail]);
+
   // Generate the 2-3 sentence executive summary automatically if missing
   React.useEffect(() => {
     let active = true;
