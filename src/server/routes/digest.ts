@@ -14,7 +14,7 @@ router.post("/digest", async (req, res) => {
 
     const ai = createGeminiClient();
 
-    const maxMsgs = 1200;
+    const maxMsgs = 500;
     const slicedMessages = messages.length > maxMsgs ? messages.slice(-maxMsgs) : messages;
 
     const conversationText = slicedMessages
@@ -44,7 +44,7 @@ Here is the conversation text:
 ${conversationText}
 
 Please analyze the discussions and output the result in structured JSON. Include:
-1. "summary": A detailed, beautiful markdown-formatted executive summary (written in third-person, around 2-4 paragraphs). Use bold styling (**text**) or bullets for major focus points to make it read like custom-crafted engineering synthesis. Highlight key projects, consensus trends, or interesting group dynamics.
+1. "summary": A detailed, beautiful markdown-formatted executive summary (written in third-person, around 1-2 paragraphs maximum). Use bold styling (**text**) or bullets for major focus points. Keep it concise.
 2. "executiveSummary": A highly polished, concise 2 to 3 sentence executive summary that answers 'what is the entire conversation about?' and states the core resolution or status cleanly in prose. Must be exactly 2-3 sentences.
 3. "keywords": 5 to 10 key topic words / hashtags that define this chat thread.
 4. "decisions": List the concrete consensus items, agreements, or signed-off choices made by members. Make sure to identify 'sender', 'text', and 'dateStr'.
@@ -67,7 +67,7 @@ Please analyze the discussions and output the result in structured JSON. Include
           properties: {
             summary: {
               type: Type.STRING,
-              description: `Deep analytical executive summary in beautiful markdown. MUST BE WRITTEN ENTIRELY IN ${language === "nl" ? "Dutch (Nederlands)" : "English"}. Put terms of note or project names in bold styling. 3 paragraphs minimum.`,
+              description: `Deep analytical executive summary in beautiful markdown. MUST BE WRITTEN ENTIRELY IN ${language === "nl" ? "Dutch (Nederlands)" : "English"}. Put terms of note or project names in bold styling. 1-2 paragraphs maximum.`,
             },
             executiveSummary: {
               type: Type.STRING,

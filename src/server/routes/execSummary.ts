@@ -13,7 +13,7 @@ router.post("/executive-summary", async (req, res) => {
 
     const ai = createGeminiClient();
 
-    const maxMsgs = 1200;
+    const maxMsgs = 500;
     const slicedMessages = messages.length > maxMsgs ? messages.slice(-maxMsgs) : messages;
 
     const conversationText = slicedMessages
