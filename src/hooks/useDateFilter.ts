@@ -165,15 +165,26 @@ export function useDateFilter(digest: ChatDigestData) {
       summary += `A total of **${filteredDecisions.length}** critical agreements were finalized, while **${filteredActionItems.length}** key follow-ups were identified, tasking **${actionAssignees}** with immediate next deliverables.`;
     }
 
+    const filterKey = dateFilterType === 'custom'
+      ? `custom_${customStartDate}_${customEndDate}`
+      : dateFilterType;
+
+    const savedPeriod = digest.periodSummaries?.[filterKey];
+
+    const finalSummary = savedPeriod ? savedPeriod.summary : summary;
+    const finalKeywords = savedPeriod ? savedPeriod.keywords : keywords;
+    const finalDecisions = savedPeriod ? savedPeriod.decisions : filteredDecisions;
+    const finalActionItems = savedPeriod ? savedPeriod.actionItems : filteredActionItems;
+
     return {
       ...digest,
       participants,
       participantCounts,
       messages: filteredMessages,
-      decisions: filteredDecisions,
-      actionItems: filteredActionItems,
-      summary,
-      keywords,
+      decisions: finalDecisions,
+      actionItems: finalActionItems,
+      summary: finalSummary,
+      keywords: finalKeywords,
       startDateStr,
       endDateStr,
       timeline: filteredTimeline,

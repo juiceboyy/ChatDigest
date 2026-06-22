@@ -70,6 +70,12 @@ export interface ChatDigestData {
   playbook?: PlaybookData;
   isFullyLoaded?: boolean;
   title?: string;
+  periodSummaries?: Record<string, {
+    summary: string;
+    keywords: string[];
+    decisions: ChatDecision[];
+    actionItems: ActionItem[];
+  }>;
 }
 
 export interface PlaybookPlay {

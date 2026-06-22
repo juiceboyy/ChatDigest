@@ -14,15 +14,12 @@ import PlaybookSection from './dashboard/PlaybookSection';
 import MediaAnalyzer from './dashboard/MediaAnalyzer';
 import ChatAssistant from './dashboard/ChatAssistant';
 import MessagesLog from './dashboard/MessagesLog';
-import ItemDetailModal from './dashboard/ItemDetailModal';
-import UpdateChatModal from './dashboard/UpdateChatModal';
 import DateFilterBar from './dashboard/DateFilterBar';
 import FilterToolbar from './dashboard/FilterToolbar';
+import DashboardModals from './dashboard/DashboardModals';
 
 // ── Hooks ──────────────────────────────────────────────────────────────────────
-import { useDashboard } from './dashboard/useDashboard';
-import { useMediaHandlers } from './dashboard/useMediaHandlers';
-import { useChatHandlers } from './dashboard/useChatHandlers';
+import { useDashboardState } from './dashboard/useDashboardState';
 import { useDateFilter } from '../hooks/useDateFilter';
 
 interface DashboardProps {
@@ -54,14 +51,31 @@ export default function Dashboard({
   // Wrapper to merge filtered saves back to full digest
   const handleSaveDigestFiltered = (updatedFilteredDigest: ChatDigestData) => {
     if (!onSaveDigest) return;
+
+    const filterKey = dateFilterType === 'custom'
+      ? `custom_${customStartDate}_${customEndDate}`
+      : dateFilterType;
+
+    const periodSummaries = { ...(digest.periodSummaries || {}) };
+
+    if (dateFilterType !== 'all') {
+      periodSummaries[filterKey] = {
+        summary: updatedFilteredDigest.summary,
+        keywords: updatedFilteredDigest.keywords,
+        decisions: updatedFilteredDigest.decisions,
+        actionItems: updatedFilteredDigest.actionItems,
+      };
+    }
+
     const mergedDigest: ChatDigestData = {
       ...digest,
-      summary: updatedFilteredDigest.summary,
-      keywords: updatedFilteredDigest.keywords,
-      decisions: updatedFilteredDigest.decisions,
-      actionItems: updatedFilteredDigest.actionItems,
+      summary: dateFilterType === 'all' ? updatedFilteredDigest.summary : digest.summary,
+      keywords: dateFilterType === 'all' ? updatedFilteredDigest.keywords : digest.keywords,
+      decisions: dateFilterType === 'all' ? updatedFilteredDigest.decisions : digest.decisions,
+      actionItems: dateFilterType === 'all' ? updatedFilteredDigest.actionItems : digest.actionItems,
       playbook: updatedFilteredDigest.playbook,
       executiveSummary: updatedFilteredDigest.executiveSummary,
+      periodSummaries,
     };
     onSaveDigest(mergedDigest);
   };
@@ -80,67 +94,12 @@ export default function Dashboard({
     completed?: boolean;
   } | null>(null);
 
-  // ── Custom Hooks ──────────────────────────────────────────────────────────────
-  const {
-    isSynthesizing,
-    synthesisError,
-    isGeneratingExecSummary,
-    execSummaryError,
-    isEditingExecSummary,
-    editingExecSummaryText,
-    isGeneratingPlaybook,
-    playbookError,
-    isUpdateModalOpen,
-    setIsUpdateModalOpen,
-    setIsEditingExecSummary,
-    setEditingExecSummaryText,
-    handleSynthesize,
-    handleManualRegenerateExecSummary,
-    handleSaveExecSummaryEdit,
-    handleGeneratePlaybook,
-    handleSavePlayEdit,
-    handleDeletePlay,
-    handleAddPlay,
-  } = useDashboard({ digest: filteredDigest, onSaveDigest: handleSaveDigestFiltered, language });
-
-  const {
-    mediaFile,
-    mediaBase64,
-    mediaLoading,
-    mediaError,
-    customPrompt,
-    parsedMediaResult,
-    deleteMediaId,
-    setCustomPrompt,
-    setMediaFile,
-    setMediaBase64,
-    setDeleteMediaId,
-    handleMediaFileChange,
-    handleSetMediaFromZip,
-    handleAnalyzeMedia,
-    handleMergeMediaIntoDigest,
-    handleDeleteParsedMedia,
-    executeDeleteParsedMedia,
-  } = useMediaHandlers({ digest: filteredDigest, onSaveDigest: handleSaveDigestFiltered, language });
-
-  const {
-    queryInput,
-    chatHistory,
-    chatLoading,
-    chatError,
-    committingDecision,
-    isAuditingContradictions,
-    auditError,
-    contradictions,
-    setQueryInput,
-    setCommittingDecision,
-    setContradictions,
-    handleSendQuery,
-    handleInitiateCommit,
-    handleReAudit,
-    handleConfirmCommitDecision,
-    handleToggleContradictionPartDelete,
-  } = useChatHandlers({ digest: filteredDigest, onSaveDigest: handleSaveDigestFiltered, language });
+  // ── Custom Hooks State ────────────────────────────────────────────────────────
+  const { dashboard, media, chat } = useDashboardState({
+    digest: filteredDigest,
+    onSaveDigest: handleSaveDigestFiltered,
+    language,
+  });
 
   // Escape key to close detail modal
   useEffect(() => {
@@ -153,11 +112,11 @@ export default function Dashboard({
 
   // Scroll to top when modals open
   useEffect(() => {
-    if (selectedDetail || isUpdateModalOpen) {
+    if (selectedDetail || dashboard.isUpdateModalOpen) {
       const scroller = document.getElementById('main-scroller');
       if (scroller) scroller.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [selectedDetail, isUpdateModalOpen]);
+  }, [selectedDetail, dashboard.isUpdateModalOpen]);
 
   const firstParticipant = filteredDigest.participants[0] || '';
 
@@ -166,33 +125,33 @@ export default function Dashboard({
       {/* Header */}
       <DashboardHeader
         digest={filteredDigest}
-        onUpdateChat={() => setIsUpdateModalOpen(true)}
+        onUpdateChat={() => dashboard.setIsUpdateModalOpen(true)}
         language={language}
       />
 
       {/* Executive snapshot */}
       <ExecSummaryCard
         executiveSummary={filteredDigest.executiveSummary}
-        isGenerating={isGeneratingExecSummary}
-        error={execSummaryError}
-        isEditing={isEditingExecSummary}
-        editingText={editingExecSummaryText}
-        onEditingTextChange={setEditingExecSummaryText}
+        isGenerating={dashboard.isGeneratingExecSummary}
+        error={dashboard.execSummaryError}
+        isEditing={dashboard.isEditingExecSummary}
+        editingText={dashboard.editingExecSummaryText}
+        onEditingTextChange={dashboard.setEditingExecSummaryText}
         onStartEdit={() => {
-          setEditingExecSummaryText(filteredDigest.executiveSummary || '');
-          setIsEditingExecSummary(true);
+          dashboard.setEditingExecSummaryText(filteredDigest.executiveSummary || '');
+          dashboard.setIsEditingExecSummary(true);
         }}
-        onSaveEdit={handleSaveExecSummaryEdit}
-        onCancelEdit={() => setIsEditingExecSummary(false)}
-        onRegenerate={handleManualRegenerateExecSummary}
+        onSaveEdit={dashboard.handleSaveExecSummaryEdit}
+        onCancelEdit={() => dashboard.setIsEditingExecSummary(false)}
+        onRegenerate={dashboard.handleManualRegenerateExecSummary}
       />
 
       {/* Summary panel */}
       <SummaryPanel
         digest={filteredDigest}
-        isSynthesizing={isSynthesizing}
-        synthesisError={synthesisError}
-        onSynthesize={handleSynthesize}
+        isSynthesizing={dashboard.isSynthesizing}
+        synthesisError={dashboard.synthesisError}
+        onSynthesize={dashboard.handleSynthesize}
       />
 
       {/* Date Filter Bar */}
@@ -242,46 +201,46 @@ export default function Dashboard({
       {/* Playbook */}
       <PlaybookSection
         digest={filteredDigest}
-        isGeneratingPlaybook={isGeneratingPlaybook}
-        playbookError={playbookError}
-        onGeneratePlaybook={handleGeneratePlaybook}
+        isGeneratingPlaybook={dashboard.isGeneratingPlaybook}
+        playbookError={dashboard.playbookError}
+        onGeneratePlaybook={dashboard.handleGeneratePlaybook}
         onExportPlaybookPDF={() => exportPlaybookToPdf(filteredDigest)}
-        onAddPlay={handleAddPlay}
-        onSavePlayEdit={handleSavePlayEdit}
-        onDeletePlay={handleDeletePlay}
+        onAddPlay={dashboard.handleAddPlay}
+        onSavePlayEdit={dashboard.handleSavePlayEdit}
+        onDeletePlay={dashboard.handleDeletePlay}
         language={language}
       />
 
       {/* Media analyzer */}
       <MediaAnalyzer
         digest={filteredDigest}
-        mediaFile={mediaFile}
-        mediaBase64={mediaBase64}
-        mediaLoading={mediaLoading}
-        mediaError={mediaError}
-        parsedMediaResult={parsedMediaResult}
-        customPrompt={customPrompt}
-        onCustomPromptChange={setCustomPrompt}
-        onMediaFileChange={handleMediaFileChange}
-        onSetMediaFromZip={handleSetMediaFromZip}
+        mediaFile={media.mediaFile}
+        mediaBase64={media.mediaBase64}
+        mediaLoading={media.mediaLoading}
+        mediaError={media.mediaError}
+        parsedMediaResult={media.parsedMediaResult}
+        customPrompt={media.customPrompt}
+        onCustomPromptChange={media.setCustomPrompt}
+        onMediaFileChange={media.handleMediaFileChange}
+        onSetMediaFromZip={media.handleSetMediaFromZip}
         onClearMedia={() => {
-          setMediaFile(null);
-          setMediaBase64(null);
+          media.setMediaFile(null);
+          media.setMediaBase64(null);
         }}
-        onAnalyzeMedia={handleAnalyzeMedia}
-        onMergeMediaIntoDigest={handleMergeMediaIntoDigest}
-        onDeleteParsedMedia={handleDeleteParsedMedia}
+        onAnalyzeMedia={media.handleAnalyzeMedia}
+        onMergeMediaIntoDigest={media.handleMergeMediaIntoDigest}
+        onDeleteParsedMedia={media.handleDeleteParsedMedia}
       />
 
       {/* Chat assistant */}
       <ChatAssistant
-        chatHistory={chatHistory}
-        chatLoading={chatLoading}
-        chatError={chatError}
-        queryInput={queryInput}
-        onQueryInputChange={setQueryInput}
-        onSubmitQuery={handleSendQuery}
-        onInitiateCommit={handleInitiateCommit}
+        chatHistory={chat.chatHistory}
+        chatLoading={chat.chatLoading}
+        chatError={chat.chatError}
+        queryInput={chat.queryInput}
+        onQueryInputChange={chat.setQueryInput}
+        onSubmitQuery={chat.handleSendQuery}
+        onInitiateCommit={chat.handleInitiateCommit}
         language={language}
       />
 
@@ -294,45 +253,27 @@ export default function Dashboard({
       />
 
       {/* Modals */}
-      <ItemDetailModal
-        digest={filteredDigest}
+      <DashboardModals
+        digest={digest}
+        filteredDigest={filteredDigest}
         selectedDetail={selectedDetail}
-        committingDecision={committingDecision}
-        contradictions={contradictions}
-        isAuditingContradictions={isAuditingContradictions}
-        auditError={auditError}
-        deleteMediaId={deleteMediaId}
-        onCloseDetail={() => setSelectedDetail(null)}
-        onCloseCommit={() => setCommittingDecision(null)}
+        setSelectedDetail={setSelectedDetail}
+        isUpdateModalOpen={dashboard.isUpdateModalOpen}
+        setIsUpdateModalOpen={dashboard.setIsUpdateModalOpen}
+        committingDecision={chat.committingDecision}
+        setCommittingDecision={chat.setCommittingDecision}
+        contradictions={chat.contradictions}
+        isAuditingContradictions={chat.isAuditingContradictions}
+        auditError={chat.auditError}
+        deleteMediaId={media.deleteMediaId}
+        setDeleteMediaId={media.setDeleteMediaId}
         onUpdateActionItem={onUpdateActionItem}
         onUpdateActionItemAssignee={onUpdateActionItemAssignee}
-        onUpdateDetailSender={(sender) =>
-          setSelectedDetail((prev) => (prev ? { ...prev, sender } : prev))
-        }
-        onUpdateDetailCompleted={(completed) =>
-          setSelectedDetail((prev) => (prev ? { ...prev, completed } : prev))
-        }
-        onCommittingDecisionTextChange={(text) =>
-          setCommittingDecision((prev) => (prev ? { ...prev, text } : prev))
-        }
-        onCommittingDecisionSenderChange={(sender) =>
-          setCommittingDecision((prev) => (prev ? { ...prev, sender } : prev))
-        }
-        onCommittingDecisionDateChange={(dateStr) =>
-          setCommittingDecision((prev) => (prev ? { ...prev, dateStr } : prev))
-        }
-        onReAudit={handleReAudit}
-        onToggleContradictionPartDelete={handleToggleContradictionPartDelete}
-        onConfirmCommitDecision={handleConfirmCommitDecision}
-        onConfirmDeleteMedia={executeDeleteParsedMedia}
-        onCancelDeleteMedia={() => setDeleteMediaId(null)}
-      />
-
-      <UpdateChatModal
-        isOpen={isUpdateModalOpen}
-        onClose={() => setIsUpdateModalOpen(false)}
-        digest={digest} // Keep raw unfiltered digest here so update operation matches all history
-        onSaveDigest={onSaveDigest || (() => {})}
+        handleReAudit={chat.handleReAudit}
+        handleToggleContradictionPartDelete={chat.handleToggleContradictionPartDelete}
+        handleConfirmCommitDecision={chat.handleConfirmCommitDecision}
+        executeDeleteParsedMedia={media.executeDeleteParsedMedia}
+        onSaveDigest={handleSaveDigestFiltered}
         language={language}
       />
     </div>
