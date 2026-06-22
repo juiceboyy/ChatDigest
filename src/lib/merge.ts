@@ -17,20 +17,39 @@ export function mergeMessages(existing: ParsedMessage[], incoming: ParsedMessage
 }
 
 export function mergeActionItems(existing: ActionItem[], incoming: any[]): ActionItem[] {
-  const existingTexts = new Set(existing.map(item => item.text.trim().toLowerCase()));
+  const existingTexts = new Map<string, ActionItem>();
+  existing.forEach(item => existingTexts.set(item.text.trim().toLowerCase(), item));
+  
   const merged = [...existing];
   
   incoming.forEach((item, index) => {
     const cleanText = item.text.trim();
-    if (!existingTexts.has(cleanText.toLowerCase())) {
+    const key = cleanText.toLowerCase();
+    
+    if (existingTexts.has(key)) {
+      const existingItem = existingTexts.get(key)!;
+      if (!existingItem.completed && item.completed) {
+        const idx = merged.findIndex(x => x.id === existingItem.id);
+        if (idx !== -1) {
+          merged[idx] = {
+            ...merged[idx],
+            completed: true,
+            completedBy: item.completedBy || undefined,
+            completedMessage: item.completedMessage || undefined
+          };
+        }
+      }
+    } else {
       merged.push({
         id: `act-g-merged-${index}-${Date.now()}`,
         sender: item.sender || 'The Group',
         text: cleanText,
         dateStr: item.dateStr,
-        completed: false
+        completed: item.completed || false,
+        completedBy: item.completedBy || undefined,
+        completedMessage: item.completedMessage || undefined
       });
-      existingTexts.add(cleanText.toLowerCase());
+      existingTexts.set(key, merged[merged.length - 1]);
     }
   });
   

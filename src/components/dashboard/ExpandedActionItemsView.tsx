@@ -94,6 +94,7 @@ export default function ExpandedActionItemsView({
                   task={t}
                   onToggle={() => onUpdateActionItem(t.id, true)}
                   onClick={() => onSelectDetail({ ...t, type: 'action' })}
+                  language={language}
                 />
               ))
             )}
@@ -118,6 +119,7 @@ export default function ExpandedActionItemsView({
                   task={t}
                   onToggle={() => onUpdateActionItem(t.id, false)}
                   onClick={() => onSelectDetail({ ...t, type: 'action' })}
+                  language={language}
                 />
               ))
             )}
@@ -128,7 +130,18 @@ export default function ExpandedActionItemsView({
   );
 }
 
-function TaskCard({ task, onToggle, onClick }: { task: ActionItem; onToggle: () => void; onClick: () => void; key?: string }) {
+function TaskCard({
+  task,
+  onToggle,
+  onClick,
+  language,
+}: {
+  task: ActionItem;
+  onToggle: () => void;
+  onClick: () => void;
+  language: Language;
+  key?: string;
+}) {
   return (
     <div
       onClick={onClick}
@@ -167,6 +180,25 @@ function TaskCard({ task, onToggle, onClick }: { task: ActionItem; onToggle: () 
           )}
           <span>{task.dateStr}</span>
         </div>
+
+        {/* Gemini-detected completion info */}
+        {task.completed && (task.completedBy || task.completedMessage) && (
+          <div className="mt-2 pt-2 border-t border-white/5 text-[10px] text-gray-400 space-y-1">
+            {task.completedBy && (
+              <div>
+                <span className="font-mono text-emerald-500/90 font-medium mr-1">
+                  ✓ {language === 'nl' ? 'Voltooid door:' : 'Completed by:'}
+                </span>
+                <span className="text-gray-300 font-normal">{task.completedBy}</span>
+              </div>
+            )}
+            {task.completedMessage && (
+              <div className="italic text-gray-500 pl-2 border-l border-white/10 select-text leading-normal break-words">
+                "{task.completedMessage}"
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

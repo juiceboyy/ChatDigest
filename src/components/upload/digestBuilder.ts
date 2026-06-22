@@ -157,7 +157,9 @@ export function buildDigestFromMediaData(
     sender: a.sender || 'The Group',
     text: a.text,
     dateStr: a.dateStr || new Date().toISOString().split('T')[0],
-    completed: false
+    completed: (a as any).completed || false,
+    completedBy: (a as any).completedBy || undefined,
+    completedMessage: (a as any).completedMessage || undefined
   }));
 
   const participants = Object.keys(participantCounts).sort((a, b) => participantCounts[b] - participantCounts[a]);

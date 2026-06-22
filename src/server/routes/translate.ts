@@ -16,7 +16,7 @@ router.post("/translate", async (req, res) => {
 Translate the following chat digest parts into ${targetLang}. 
 
 CRITICAL: Keep the same markdown format, the same meaning, and the exact same tone. 
-For decisions and action items, translate only the text and sender fields (do not translate dates or IDs, but translate the task/agreement description text).
+For decisions and action items, translate the text, sender (if general like "The Group"), and completedMessage fields (do not translate dates, IDs, or usernames, but translate the task/agreement description text and the referencing completion message text).
 If sender is "The Group" or "The Group", translate it to the target language if appropriate (e.g., "De Groep" in Dutch, or keep it). Keep other names as they are.
 
 Here is the data to translate:
@@ -67,6 +67,8 @@ Output the translations in the exact same structured JSON schema.`;
                   text: { type: Type.STRING, description: "The translated action item description." },
                   dateStr: { type: Type.STRING },
                   completed: { type: Type.BOOLEAN },
+                  completedBy: { type: Type.STRING },
+                  completedMessage: { type: Type.STRING, description: "The translated referencing completion message." },
                 },
                 required: ["id", "sender", "text", "dateStr", "completed"],
               },

@@ -2,6 +2,7 @@ import React from 'react';
 import { ChatDigestData } from '../../types';
 import { Language } from '../../lib/translations';
 import ItemDetailModal from './ItemDetailModal';
+import CommitDecisionModal from './CommitDecisionModal';
 import UpdateChatModal from './UpdateChatModal';
 
 interface DashboardModalsProps {
@@ -14,6 +15,8 @@ interface DashboardModalsProps {
     text: string;
     dateStr: string;
     completed?: boolean;
+    completedBy?: string;
+    completedMessage?: string;
   } | null;
   setSelectedDetail: React.Dispatch<React.SetStateAction<any>>;
   isUpdateModalOpen: boolean;
@@ -63,13 +66,8 @@ export default function DashboardModals({
       <ItemDetailModal
         digest={filteredDigest}
         selectedDetail={selectedDetail}
-        committingDecision={committingDecision}
-        contradictions={contradictions}
-        isAuditingContradictions={isAuditingContradictions}
-        auditError={auditError}
         deleteMediaId={deleteMediaId}
         onCloseDetail={() => setSelectedDetail(null)}
-        onCloseCommit={() => setCommittingDecision(null)}
         onUpdateActionItem={onUpdateActionItem}
         onUpdateActionItemAssignee={onUpdateActionItemAssignee}
         onUpdateDetailSender={(sender) =>
@@ -78,6 +76,18 @@ export default function DashboardModals({
         onUpdateDetailCompleted={(completed) =>
           setSelectedDetail((prev: any) => (prev ? { ...prev, completed } : prev))
         }
+        onConfirmDeleteMedia={executeDeleteParsedMedia}
+        onCancelDeleteMedia={() => setDeleteMediaId(null)}
+        language={language}
+      />
+
+      <CommitDecisionModal
+        digest={filteredDigest}
+        committingDecision={committingDecision}
+        contradictions={contradictions}
+        isAuditingContradictions={isAuditingContradictions}
+        auditError={auditError}
+        onCloseCommit={() => setCommittingDecision(null)}
         onCommittingDecisionTextChange={(text) =>
           setCommittingDecision((prev: any) => (prev ? { ...prev, text } : prev))
         }
@@ -90,8 +100,6 @@ export default function DashboardModals({
         onReAudit={handleReAudit}
         onToggleContradictionPartDelete={handleToggleContradictionPartDelete}
         onConfirmCommitDecision={handleConfirmCommitDecision}
-        onConfirmDeleteMedia={executeDeleteParsedMedia}
-        onCancelDeleteMedia={() => setDeleteMediaId(null)}
       />
 
       <UpdateChatModal

@@ -112,12 +112,8 @@ export default function ActionItemsColumn({
               key={act.id}
               onClick={() =>
                 onSelectDetail({
-                  id: act.id,
+                  ...act,
                   type: 'action',
-                  sender: act.sender,
-                  text: act.text,
-                  dateStr: act.dateStr,
-                  completed: act.completed,
                 })
               }
               className={`group flex items-start gap-3 p-3.5 rounded border cursor-pointer select-none transition-all duration-200 ${

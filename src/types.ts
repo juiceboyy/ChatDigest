@@ -22,6 +22,8 @@ export interface ActionItem {
   text: string;
   dateStr: string;
   completed: boolean;
+  completedBy?: string;
+  completedMessage?: string;
 }
 
 export interface TimelineDataPoint {

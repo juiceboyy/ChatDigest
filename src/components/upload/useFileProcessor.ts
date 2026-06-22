@@ -127,7 +127,9 @@ export function useFileProcessor({
               sender: a.sender,
               text: a.text,
               dateStr: a.dateStr,
-              completed: false,
+              completed: a.completed || false,
+              completedBy: a.completedBy || undefined,
+              completedMessage: a.completedMessage || undefined,
             })),
             zipAttachments,
           };

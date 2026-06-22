@@ -94,7 +94,15 @@ export function useDashboard({ digest, onSaveDigest, language }: UseDashboardPro
         summary: geminiDigest.summary,
         keywords: geminiDigest.keywords,
         decisions: geminiDigest.decisions.map((d: any, i: number) => ({ id: `dec-g-${i}-${Date.now()}`, sender: d.sender, text: d.text, dateStr: d.dateStr })),
-        actionItems: geminiDigest.actionItems.map((a: any, i: number) => ({ id: `act-g-${i}-${Date.now()}`, sender: a.sender, text: a.text, dateStr: a.dateStr, completed: false })),
+        actionItems: geminiDigest.actionItems.map((a: any, i: number) => ({
+          id: `act-g-${i}-${Date.now()}`,
+          sender: a.sender,
+          text: a.text,
+          dateStr: a.dateStr,
+          completed: a.completed || false,
+          completedBy: a.completedBy || undefined,
+          completedMessage: a.completedMessage || undefined,
+        })),
       };
       if (onSaveDigest) onSaveDigest(finalData);
     } catch (err: any) {

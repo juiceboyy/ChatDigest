@@ -62,7 +62,12 @@ Your tasks are:
    - "executiveSummary": A highly polished 2-3 sentence executive summary of the conversation.
    - "keywords": 5 to 10 principal focus topics/hashtags.
    - "decisions": List concrete consensus items or agreements (include "sender", "text", "dateStr").
-   - "actionItems": List specific to-do tasks and assignments (include "sender", "text", "dateStr").
+   - "actionItems": List specific to-do tasks and assignments (include "sender", "text", "dateStr", and check if completed: "completed", "completedBy", "completedMessage").
+     - COMPLETION ANALYSIS: Scan subsequent messages in the conversation history to see if the task was later completed or addressed in the chat. If a participant explicitly reports completing it, or it is clear from the discussion that the task is finished:
+       - Set "completed" to true.
+       - Set "completedBy" to the name of the participant who completed the task.
+       - Set "completedMessage" to the exact message text (or a very close translation/summary of it) that refers to the completion.
+       - Otherwise, set "completed" to false, and leave "completedBy" and "completedMessage" empty.
 
 CRITICAL LOGICAL RULE & CONTEXT:
 Today's date is: ${todayStr} (June 21, 2026).
@@ -135,9 +140,21 @@ ${langInstruction}`;
                 properties: {
                   sender: { type: Type.STRING, description: "Name of the person assigned or responsible." },
                   text: { type: Type.STRING, description: `Explicit task definition. MUST BE WRITTEN ENTIRELY IN ${language === "nl" ? "Dutch (Nederlands)" : "English"}.` },
-                  dateStr: { type: Type.STRING, description: "The actual date when the message containing this request was sent." }
+                  dateStr: { type: Type.STRING, description: "The actual date when the message containing this request was sent." },
+                  completed: {
+                    type: Type.BOOLEAN,
+                    description: "Set to true if the chat history shows this task was later completed. Otherwise false.",
+                  },
+                  completedBy: {
+                    type: Type.STRING,
+                    description: "If completed is true, the name of the participant who completed the task. Otherwise leave empty.",
+                  },
+                  completedMessage: {
+                    type: Type.STRING,
+                    description: `If completed is true, the exact or summarized text of the chat message that refers to the completion. MUST BE WRITTEN ENTIRELY IN ${language === "nl" ? "Dutch (Nederlands)" : "English"}. Otherwise leave empty.`,
+                  },
                 },
-                required: ["sender", "text", "dateStr"]
+                required: ["sender", "text", "dateStr", "completed"]
               }
             }
           },

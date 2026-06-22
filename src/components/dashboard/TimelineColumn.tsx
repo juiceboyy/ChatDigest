@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Clock, Smile, Meh, Frown, Maximize2 } from 'lucide-react';
 import { ChatDigestData, TimelineDataPoint } from '../../types';
 import { Language, getTranslation } from '../../lib/translations';
@@ -15,6 +15,14 @@ export default function TimelineColumn({
   onExpand,
 }: TimelineColumnProps) {
   const totalMessages = digest.messages.length;
+  const [hoveredNode, setHoveredNode] = useState<{
+    dateStr: string;
+    avgSentiment: number;
+    messageCount: number;
+    topSender: string;
+    clientX: number;
+    clientY: number;
+  } | null>(null);
 
   const svgSparklinePoints = useMemo(() => {
     const list = digest.timeline;
@@ -121,9 +129,19 @@ export default function TimelineColumn({
                     stroke={pointColor}
                     strokeWidth="1.5"
                     className="transition-transform hover:scale-150 cursor-pointer"
-                  >
-                    <title>{`${originalNode.dateStr}: Sentiment ${originalNode.avgSentiment} (${originalNode.messageCount} msgs)`}</title>
-                  </circle>
+                    onMouseEnter={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setHoveredNode({
+                        dateStr: originalNode.dateStr,
+                        avgSentiment: originalNode.avgSentiment,
+                        messageCount: originalNode.messageCount,
+                        topSender: originalNode.topSender,
+                        clientX: rect.left + rect.width / 2,
+                        clientY: rect.top - 8,
+                      });
+                    }}
+                    onMouseLeave={() => setHoveredNode(null)}
+                  />
                 );
               })}
             </svg>
@@ -200,6 +218,36 @@ export default function TimelineColumn({
           );
         })}
       </div>
+
+      {hoveredNode && (
+        <div
+          style={{
+            position: 'fixed',
+            left: `${hoveredNode.clientX}px`,
+            top: `${hoveredNode.clientY}px`,
+            transform: 'translate(-50%, -100%)',
+          }}
+          className="z-50 p-3 bg-[#0F0F0F]/95 backdrop-blur-md border border-white/10 rounded-lg shadow-xl text-left pointer-events-none min-w-[150px] animate-fadeIn"
+        >
+          <p className="text-[10px] font-bold text-white mb-1.5">{hoveredNode.dateStr}</p>
+          <div className="space-y-1 text-[9px] font-mono text-gray-400">
+            <div className="flex justify-between gap-4">
+              <span>Messages:</span>
+              <span className="text-blue-450 font-semibold">{hoveredNode.messageCount}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span>Sentiment:</span>
+              <span className={hoveredNode.avgSentiment > 0.1 ? 'text-emerald-405' : hoveredNode.avgSentiment < -0.1 ? 'text-rose-455' : 'text-gray-300'}>
+                {hoveredNode.avgSentiment}
+              </span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span>Top Speaker:</span>
+              <span className="text-gray-250 font-medium truncate max-w-[85px]">{hoveredNode.topSender}</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
