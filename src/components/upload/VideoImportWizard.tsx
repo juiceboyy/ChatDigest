@@ -40,7 +40,7 @@ export default function VideoImportWizard({
   const [fps, setFps] = useState<number>(2);
   const [processingProgress, setProcessingProgress] = useState({ current: 0, total: 0, isSynthesizing: false });
   
-  const threshold = 0.20;
+  const [threshold, setThreshold] = useState<number>(0.10);
   const file = files[0];
   const isVideo = file && file.type.startsWith('video/');
 
@@ -275,6 +275,8 @@ export default function VideoImportWizard({
           onDeleteFrame={handleDeleteFrame}
           onCancel={onCancel}
           onProcess={handleProcessChat}
+          threshold={threshold}
+          onChangeThreshold={setThreshold}
         />
       )}
 

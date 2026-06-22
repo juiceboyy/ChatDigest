@@ -18,6 +18,8 @@ interface ReviewStepProps {
   onDeleteFrame: (id: string) => void;
   onCancel: () => void;
   onProcess: () => void;
+  threshold: number;
+  onChangeThreshold: (val: number) => void;
 }
 
 export default function ReviewStep({
@@ -30,6 +32,8 @@ export default function ReviewStep({
   onDeleteFrame,
   onCancel,
   onProcess,
+  threshold,
+  onChangeThreshold,
 }: ReviewStepProps) {
   return (
     <div className="space-y-6">
@@ -40,22 +44,43 @@ export default function ReviewStep({
 
       {/* DEDUPLICATION STATS INFO BANNER (Video Mode only) */}
       {isVideo && frames.length > 0 && (
-        <div className="bg-[#0A0A0A] border border-white/5 p-3.5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left">
-          <div>
-            <h5 className="text-xs font-bold text-gray-300">
-              {language === 'nl' ? 'Automatische Ontdubbeling Actief' : 'Automatic Deduplication Active'}
-            </h5>
-            <p className="text-[10px] text-gray-500 font-light mt-0.5">
+        <div className="bg-[#0A0A0A] border border-white/5 p-3.5 rounded-xl space-y-3 text-left">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h5 className="text-xs font-bold text-gray-300">
+                {language === 'nl' ? 'Automatische Ontdubbeling Actief' : 'Automatic Deduplication Active'}
+              </h5>
+              <p className="text-[10px] text-gray-500 font-light mt-0.5">
+                {language === 'nl' 
+                  ? 'Pas de drempelwaarde aan om meer of minder frames te behouden.' 
+                  : 'Adjust the difference threshold to keep more or fewer frames.'}
+              </p>
+            </div>
+            <span className="text-[10px] font-mono font-bold bg-blue-500/10 text-blue-400 border border-blue-500/15 px-3 py-1 rounded-lg shrink-0 self-start sm:self-center">
               {language === 'nl' 
-                ? "Frames worden lokaal vergeleken op een drempelwaarde van 20%. We verwerken lange video's in deeltrajecten om time-outs te voorkomen." 
-                : 'Frames are compared locally at a 20% difference threshold. Long scans are split into chunks to avoid server timeouts.'}
-            </p>
+                ? `${finalFramesToSend.length} van ${frames.length} over` 
+                : `${finalFramesToSend.length} of ${frames.length} kept`}
+            </span>
           </div>
-          <span className="text-[10px] font-mono font-bold bg-blue-500/10 text-blue-400 border border-blue-500/15 px-3 py-1 rounded-lg shrink-0 self-start sm:self-center">
-            {language === 'nl' 
-              ? `${finalFramesToSend.length} frames behouden van de ${frames.length}` 
-              : `${finalFramesToSend.length} frames kept out of ${frames.length}`}
-          </span>
+
+          {/* Slider */}
+          <div className="flex items-center gap-3 pt-2 border-t border-white/5">
+            <span className="text-[10px] text-gray-400 font-mono shrink-0 select-none">
+              {language === 'nl' ? 'Gevoeligheid (Drempel):' : 'Sensitivity (Threshold):'}
+            </span>
+            <input
+              type="range"
+              min="0.02"
+              max="0.35"
+              step="0.01"
+              value={threshold}
+              onChange={(e) => onChangeThreshold(parseFloat(e.target.value))}
+              className="flex-1 h-1 bg-white/15 rounded-lg appearance-none cursor-pointer accent-blue-500 outline-none"
+            />
+            <span className="text-[10px] text-blue-400 font-mono font-bold shrink-0 min-w-[70px] text-right select-none">
+              {Math.round(threshold * 100)}% ({finalFramesToSend.length} fr)
+            </span>
+          </div>
         </div>
       )}
 
