@@ -1,4 +1,5 @@
 import React from 'react';
+import { Calendar } from 'lucide-react';
 import { Language, getTranslation } from '../../lib/translations';
 import { DateFilterType } from '../../hooks/useDateFilter';
 
@@ -53,24 +54,42 @@ export default function DateFilterBar({
         </div>
 
         {dateFilterType === 'custom' && (
-          <div className="flex items-center gap-2 animate-fadeIn">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-gray-500 font-mono uppercase">{getTranslation('startDate', language)}</span>
-              <input
-                type="date"
-                value={customStartDate}
-                onChange={(e) => setCustomStartDate(e.target.value)}
-                className="bg-[#0A0A0A] text-white text-xs font-mono px-2 py-1.5 rounded border border-white/10 focus:outline-none focus:border-blue-500/50"
-              />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 animate-fadeIn">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-gray-500 font-mono uppercase shrink-0 w-12 sm:w-auto">{getTranslation('startDate', language)}</span>
+              <div className="relative flex items-center w-full">
+                <Calendar className="w-3.5 h-3.5 text-gray-550 absolute left-2.5 pointer-events-none" />
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  onClick={(e) => {
+                    try {
+                      (e.target as any).showPicker();
+                    } catch (err) {}
+                  }}
+                  style={{ colorScheme: 'dark' }}
+                  className="w-full sm:w-auto bg-[#0A0A0A] text-white text-xs font-mono pl-8 pr-2.5 py-1.5 rounded border border-white/10 focus:outline-none focus:border-blue-500/50 cursor-pointer"
+                />
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-gray-500 font-mono uppercase">{getTranslation('endDate', language)}</span>
-              <input
-                type="date"
-                value={customEndDate}
-                onChange={(e) => setCustomEndDate(e.target.value)}
-                className="bg-[#0A0A0A] text-white text-xs font-mono px-2 py-1.5 rounded border border-white/10 focus:outline-none focus:border-blue-500/50"
-              />
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-gray-500 font-mono uppercase shrink-0 w-12 sm:w-auto">{getTranslation('endDate', language)}</span>
+              <div className="relative flex items-center w-full">
+                <Calendar className="w-3.5 h-3.5 text-gray-555 absolute left-2.5 pointer-events-none" />
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  onClick={(e) => {
+                    try {
+                      (e.target as any).showPicker();
+                    } catch (err) {}
+                  }}
+                  style={{ colorScheme: 'dark' }}
+                  className="w-full sm:w-auto bg-[#0A0A0A] text-white text-xs font-mono pl-8 pr-2.5 py-1.5 rounded border border-white/10 focus:outline-none focus:border-blue-500/50 cursor-pointer"
+                />
+              </div>
             </div>
           </div>
         )}
