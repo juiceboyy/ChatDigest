@@ -66,8 +66,6 @@ export async function generateContentWithRetry(
           rawMsg.includes("513") ||
           rawMsg.includes("503") ||
           rawMsg.includes("UNAVAILABLE") ||
-          rawMsg.includes("429") ||
-          rawMsg.includes("RESOURCE_EXHAUSTED") ||
           rawMsg.includes("high demand") ||
           rawMsg.includes("temporary");
 
