@@ -1,16 +1,18 @@
 import React, { useMemo } from 'react';
-import { Clock, Smile, Meh, Frown } from 'lucide-react';
+import { Clock, Smile, Meh, Frown, Maximize2 } from 'lucide-react';
 import { ChatDigestData, TimelineDataPoint } from '../../types';
 import { Language, getTranslation } from '../../lib/translations';
 
 interface TimelineColumnProps {
   digest: ChatDigestData;
   language: Language;
+  onExpand?: () => void;
 }
 
 export default function TimelineColumn({
   digest,
   language,
+  onExpand,
 }: TimelineColumnProps) {
   const totalMessages = digest.messages.length;
 
@@ -53,9 +55,20 @@ export default function TimelineColumn({
             {getTranslation('tabTimeline', language)}
           </h3>
         </div>
-        <span className="text-[10px] font-mono px-2 py-0.5 bg-[#0A0A0A] text-gray-400 rounded-full border border-white/5">
-          {digest.timeline.length} peaks
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-mono px-2 py-0.5 bg-[#0A0A0A] text-gray-400 rounded-full border border-white/5">
+            {digest.timeline.length} peaks
+          </span>
+          {onExpand && (
+            <button
+              onClick={onExpand}
+              title="Expand timeline"
+              className="p-1 hover:bg-white/5 hover:text-white text-gray-400 rounded transition-colors cursor-pointer"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Sparkline trend chart */}

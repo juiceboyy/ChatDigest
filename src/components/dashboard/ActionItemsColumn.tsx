@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { CheckSquare, ShieldCheck, HelpCircle } from 'lucide-react';
+import { CheckSquare, ShieldCheck, HelpCircle, Maximize2 } from 'lucide-react';
 import { ActionItem } from '../../types';
 import { Language, getTranslation } from '../../lib/translations';
 
@@ -10,6 +10,7 @@ interface ActionItemsColumnProps {
   onUpdateActionItem: (id: string, completed: boolean) => void;
   onSelectDetail: (detail: any) => void;
   language: Language;
+  onExpand?: () => void;
 }
 
 export default function ActionItemsColumn({
@@ -19,6 +20,7 @@ export default function ActionItemsColumn({
   onUpdateActionItem,
   onSelectDetail,
   language,
+  onExpand,
 }: ActionItemsColumnProps) {
   const [filterOnlyIncompleteActionItems, setFilterOnlyIncompleteActionItems] = useState(false);
 
@@ -49,18 +51,29 @@ export default function ActionItemsColumn({
             {getTranslation('tabActionItems', language)}
           </h3>
         </div>
-        <button
-          onClick={onToggleFilter}
-          className={`text-[9px] font-mono px-2 py-0.5 rounded border transition-all ${
-            filterOnlyIncompleteActionItems
-              ? 'bg-blue-500/20 text-blue-400 border-blue-500/45'
-              : 'bg-[#0A0A0A] text-gray-400 border-white/10 hover:text-white'
-          }`}
-        >
-          {filterOnlyIncompleteActionItems
-            ? language === 'nl' ? 'Openstaande taken' : 'Pending Tasks'
-            : language === 'nl' ? 'Alle taken' : 'All Tasks'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onToggleFilter}
+            className={`text-[9px] font-mono px-2 py-0.5 rounded border transition-all ${
+              filterOnlyIncompleteActionItems
+                ? 'bg-blue-500/20 text-blue-400 border-blue-500/45'
+                : 'bg-[#0A0A0A] text-gray-400 border-white/10 hover:text-white'
+            }`}
+          >
+            {filterOnlyIncompleteActionItems
+              ? language === 'nl' ? 'Openstaande taken' : 'Pending Tasks'
+              : language === 'nl' ? 'Alle taken' : 'All Tasks'}
+          </button>
+          {onExpand && (
+            <button
+              onClick={onExpand}
+              title="Expand action items"
+              className="p-1 hover:bg-white/5 hover:text-white text-gray-400 rounded transition-colors cursor-pointer"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div

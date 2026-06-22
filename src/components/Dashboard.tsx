@@ -17,6 +17,7 @@ import MessagesLog from './dashboard/MessagesLog';
 import DateFilterBar from './dashboard/DateFilterBar';
 import FilterToolbar from './dashboard/FilterToolbar';
 import DashboardModals from './dashboard/DashboardModals';
+import ExpandedPanelModal from './dashboard/ExpandedPanelModal';
 
 // ── Hooks ──────────────────────────────────────────────────────────────────────
 import { useDashboardState } from './dashboard/useDashboardState';
@@ -84,15 +85,10 @@ export default function Dashboard({
   const [searchTerm, setSearchTerm] = useState('');
   const [filterParticipant, setFilterParticipant] = useState<string | null>(null);
 
-  // ── Item detail modal state ───────────────────────────────────────────────────
-  const [selectedDetail, setSelectedDetail] = useState<{
-    id: string;
-    type: 'action' | 'decision';
-    sender: string;
-    text: string;
-    dateStr: string;
-    completed?: boolean;
-  } | null>(null);
+  const [selectedDetail, setSelectedDetail] = useState<any | null>(null);
+
+  // ── Expanded panel modal state ────────────────────────────────────────────────
+  const [expandedPanel, setExpandedPanel] = useState<'timeline' | 'decisions' | 'actionItems' | null>(null);
 
   // ── Custom Hooks State ────────────────────────────────────────────────────────
   const { dashboard, media, chat } = useDashboardState({
@@ -104,7 +100,10 @@ export default function Dashboard({
   // Escape key to close detail modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSelectedDetail(null);
+      if (e.key === 'Escape') {
+        setSelectedDetail(null);
+        setExpandedPanel(null);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -180,6 +179,7 @@ export default function Dashboard({
         <TimelineColumn
           digest={filteredDigest}
           language={language}
+          onExpand={() => setExpandedPanel('timeline')}
         />
         <DecisionsColumn
           digest={filteredDigest}
@@ -187,6 +187,7 @@ export default function Dashboard({
           filterParticipant={filterParticipant}
           onSelectDetail={setSelectedDetail}
           language={language}
+          onExpand={() => setExpandedPanel('decisions')}
         />
         <ActionItemsColumn
           actionItems={filteredDigest.actionItems}
@@ -195,6 +196,7 @@ export default function Dashboard({
           onUpdateActionItem={onUpdateActionItem}
           onSelectDetail={setSelectedDetail}
           language={language}
+          onExpand={() => setExpandedPanel('actionItems')}
         />
       </div>
 
@@ -274,6 +276,16 @@ export default function Dashboard({
         handleConfirmCommitDecision={chat.handleConfirmCommitDecision}
         executeDeleteParsedMedia={media.executeDeleteParsedMedia}
         onSaveDigest={handleSaveDigestFiltered}
+        language={language}
+      />
+
+      <ExpandedPanelModal
+        isOpen={expandedPanel !== null}
+        onClose={() => setExpandedPanel(null)}
+        panelType={expandedPanel}
+        digest={filteredDigest}
+        onUpdateActionItem={onUpdateActionItem}
+        onSelectDetail={setSelectedDetail}
         language={language}
       />
     </div>

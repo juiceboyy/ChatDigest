@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { CheckCircle2, HelpCircle } from 'lucide-react';
+import { CheckCircle2, HelpCircle, Maximize2 } from 'lucide-react';
 import { ChatDigestData, DecisionItem } from '../../types';
 import { Language, getTranslation } from '../../lib/translations';
 
@@ -9,6 +9,7 @@ interface DecisionsColumnProps {
   filterParticipant: string | null;
   onSelectDetail: (detail: any) => void;
   language: Language;
+  onExpand?: () => void;
 }
 
 export default function DecisionsColumn({
@@ -17,6 +18,7 @@ export default function DecisionsColumn({
   filterParticipant,
   onSelectDetail,
   language,
+  onExpand,
 }: DecisionsColumnProps) {
   const filteredDecisions = useMemo(() => {
     return digest.decisions.filter((dec) => {
@@ -42,9 +44,20 @@ export default function DecisionsColumn({
             {getTranslation('keyDecisions', language)}
           </h3>
         </div>
-        <span className="text-[10px] font-mono px-2 py-0.5 bg-[#0A0A0A] text-emerald-400 rounded-full border border-white/5">
-          {filteredDecisions.length} recorded
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-mono px-2 py-0.5 bg-[#0A0A0A] text-emerald-400 rounded-full border border-white/5">
+            {filteredDecisions.length} recorded
+          </span>
+          {onExpand && (
+            <button
+              onClick={onExpand}
+              title="Expand decisions"
+              className="p-1 hover:bg-white/5 hover:text-white text-gray-400 rounded transition-colors cursor-pointer"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="p-2.5 bg-[#0A0A0A] border border-white/10 rounded mb-4 text-[10px] text-gray-500 leading-normal shrink-0 flex items-start gap-1.5 font-light">
