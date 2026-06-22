@@ -26,27 +26,11 @@ function calculateSentiment(text: string): { score: number; type: 'positive' | '
   return { score, type };
 }
 
-export function buildDigestFromMediaData(
-  geminiData: {
-    messages: Array<{ sender: string; text: string; dateStr: string; timeStr: string }>;
-    summary: string;
-    executiveSummary: string;
-    keywords: string[];
-    decisions: Array<{ sender: string; text: string; dateStr: string }>;
-    actionItems: Array<{ sender: string; text: string; dateStr: string }>;
-  },
-  fileName: string,
-  fileSize: number
-): ChatDigestData {
-  const participantsSet = new Set<string>();
-  const participantCounts: Record<string, number> = {};
-
-  // 1. Process Messages
-  const messages: ParsedMessage[] = geminiData.messages.map((m, idx) => {
+export function parseRawMediaMessages(
+  rawMessages: Array<{ sender: string; text: string; dateStr: string; timeStr: string }>
+): ParsedMessage[] {
+  return rawMessages.map((m, idx) => {
     const senderCleaned = m.sender.trim();
-    participantsSet.add(senderCleaned);
-    participantCounts[senderCleaned] = (participantCounts[senderCleaned] || 0) + 1;
-
     const { score, type } = calculateSentiment(m.text);
 
     // Estimate ISO timestamp
@@ -93,6 +77,27 @@ export function buildDigestFromMediaData(
       sentiment: type,
       sentimentScore: score,
     };
+  });
+}
+
+export function buildDigestFromMediaData(
+  geminiData: {
+    messages: Array<{ sender: string; text: string; dateStr: string; timeStr: string }>;
+    summary: string;
+    executiveSummary: string;
+    keywords: string[];
+    decisions: Array<{ sender: string; text: string; dateStr: string }>;
+    actionItems: Array<{ sender: string; text: string; dateStr: string }>;
+  },
+  fileName: string,
+  fileSize: number
+): ChatDigestData {
+  const participantCounts: Record<string, number> = {};
+
+  // 1. Process Messages
+  const messages: ParsedMessage[] = parseRawMediaMessages(geminiData.messages);
+  messages.forEach((m) => {
+    participantCounts[m.sender] = (participantCounts[m.sender] || 0) + 1;
   });
 
   // 2. Compute Timeline

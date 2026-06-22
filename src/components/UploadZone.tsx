@@ -80,12 +80,15 @@ export default function UploadZone({ onParsed, language, digests = [] }: UploadZ
 
   // If the user has uploaded video/screenshots, render the Wizard instead of the dropzone
   if (wizardFiles) {
+    const targetDigest = importMode === 'merge' ? digests.find((d) => d.id === mergeTargetId) : undefined;
     return (
       <VideoImportWizard
         files={wizardFiles}
         onParsed={onParsed}
         onCancel={() => setWizardFiles(null)}
         language={language}
+        importMode={importMode}
+        mergeTargetDigest={targetDigest}
       />
     );
   }

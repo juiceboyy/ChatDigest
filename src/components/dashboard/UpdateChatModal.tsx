@@ -1,10 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { Upload, X, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
-import JSZip from 'jszip';
-import { parseWhatsAppFile } from '../../parser';
 import { ChatDigestData } from '../../types';
 import { Language, getTranslation } from '../../lib/translations';
-import { identifyNewMessages, mergeMessages, recalculateDigestStats, mergeActionItems, mergeDecisions } from '../../lib/merge';
+import { useFileProcessor } from '../upload/useFileProcessor';
+import VideoImportWizard from '../upload/VideoImportWizard';
 
 interface UpdateChatModalProps {
   isOpen: boolean;
@@ -17,11 +16,31 @@ interface UpdateChatModalProps {
 export default function UpdateChatModal({ isOpen, onClose, digest, onSaveDigest, language }: UpdateChatModalProps) {
   const [isDragActive, setIsDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [newCount, setNewCount] = useState<number>(0);
+  const [wizardFiles, setWizardFiles] = useState<File[] | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { processFile } = useFileProcessor({
+    language,
+    importMode: 'merge',
+    mergeTargetId: digest.id,
+    digests: [digest],
+    onParsed: (newDigest) => {
+      const count = newDigest.messages.length - digest.messages.length;
+      setNewCount(count);
+      onSaveDigest(newDigest);
+      setSuccess(true);
+      setParsing(false);
+      setTimeout(() => {
+        onClose();
+        setSuccess(false);
+      }, 1500);
+    },
+    setError,
+    setParsing,
+  });
 
   if (!isOpen) return null;
 
@@ -35,193 +54,18 @@ export default function UpdateChatModal({ isOpen, onClose, digest, onSaveDigest,
     }
   };
 
-  const processFile = async (file: File) => {
-    if (!file) return;
+  const handleIncomingFiles = (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
 
-    const isZip = file.name.endsWith('.zip') || file.type === 'application/zip' || file.type === 'application/x-zip-compressed';
-    if (!file.name.endsWith('.txt') && !isZip) {
-      setError(getTranslation('unsupportedFile', language));
-      return;
-    }
+    const fileArray = Array.from(fileList);
+    const firstFile = fileArray[0];
+    const isMedia = firstFile.type.startsWith('video/') || firstFile.type.startsWith('image/');
 
-    setError(null);
-    setParsing(true);
-    setSuccess(false);
-    setStatus(getTranslation('synthesizingGemini', language));
-
-    const handleParsedTextFlow = async (text: string, name: string, size: number, zipAttachments?: any[]) => {
-      try {
-        const parsedData = parseWhatsAppFile(text, name, size);
-        if (parsedData.messages.length === 0) {
-          setError(getTranslation('noValidMessages', language));
-          setParsing(false);
-          return;
-        }
-
-        // Find new messages
-        const newMessages = identifyNewMessages(digest.messages, parsedData.messages);
-        if (newMessages.length === 0) {
-          setError(getTranslation('noNewMessages', language));
-          setParsing(false);
-          return;
-        }
-
-        setNewCount(newMessages.length);
-        setStatus(getTranslation('mergingAndResynthesizing', language));
-
-        const messagesToProcess = mergeMessages(digest.messages, parsedData.messages);
-
-        // Slice messages payload on the client side to avoid HTTP payload size limits
-        const maxMsgsForDigest = 1200;
-        const slicedMessagesForDigest = messagesToProcess.length > maxMsgsForDigest
-          ? messagesToProcess.slice(-maxMsgsForDigest)
-          : messagesToProcess;
-
-        // Fetch the premium Gemini AI digest analysis from the backend server
-        const response = await fetch('/api/digest', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            fileName: name,
-            fileSize: size,
-            messages: slicedMessagesForDigest,
-            language: language,
-          }),
-        });
-
-        if (!response.ok) {
-          let errMsg = getTranslation('serverFailed', language);
-          try {
-            const errData = await response.json();
-            errMsg = errData.error || errMsg;
-          } catch (e) {
-            try {
-              const errText = await response.text();
-              errMsg = errText || response.statusText || errMsg;
-            } catch (_) {
-              errMsg = response.statusText || errMsg;
-            }
-          }
-          throw new Error(errMsg);
-        }
-
-        const geminiDigest = await response.json();
-
-        // Merge target digest and statistics
-        const statsDigest = recalculateDigestStats(digest, messagesToProcess, name, size, zipAttachments);
-        const finalData: ChatDigestData = {
-          ...statsDigest,
-          summary: geminiDigest.summary,
-          executiveSummary: geminiDigest.executiveSummary,
-          keywords: geminiDigest.keywords,
-          decisions: mergeDecisions(digest.decisions, geminiDigest.decisions),
-          actionItems: mergeActionItems(digest.actionItems, geminiDigest.actionItems),
-        };
-
-        onSaveDigest(finalData);
-        setSuccess(true);
-        setParsing(false);
-        setTimeout(() => {
-          onClose();
-        }, 1500);
-      } catch (err: any) {
-        setError(err.message || 'Unknown processing error.');
-        setParsing(false);
-      }
-    };
-
-    if (isZip) {
-      try {
-        const zip = await JSZip.loadAsync(file);
-        const txtFiles = Object.keys(zip.files).filter(name => name.endsWith('.txt') && !name.startsWith('__MACOSX/') && !zip.files[name].dir);
-        if (txtFiles.length === 0) {
-          setError('Could not find any .txt chat history file in the uploaded ZIP archive.');
-          setParsing(false);
-          return;
-        }
-
-        let chatFileName = txtFiles.find(name => name.toLowerCase().endsWith('_chat.txt'));
-        if (!chatFileName) {
-          let largestSize = -1;
-          for (const fName of txtFiles) {
-            const entry = zip.files[fName];
-            const size = (entry as any)._data?.uncompressedSize || 0;
-            if (size > largestSize) {
-              largestSize = size;
-              chatFileName = fName;
-            }
-          }
-        }
-        if (!chatFileName) chatFileName = txtFiles[0];
-
-        const chatFileEntry = zip.files[chatFileName];
-        const rawText = await chatFileEntry.async('string');
-
-        const supportedMediaExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'mp3', 'wav', 'ogg', 'm4a', 'aac', 'pdf'];
-        const zipAttachments: any[] = [];
-        const mediaFiles = Object.keys(zip.files).filter(name => {
-          const lowerName = name.toLowerCase();
-          const ext = lowerName.split('.').pop() || '';
-          return (
-            supportedMediaExtensions.includes(ext) &&
-            !name.startsWith('__MACOSX/') &&
-            !zip.files[name].dir
-          );
-        });
-
-        for (const mName of mediaFiles) {
-          const entry = zip.files[mName];
-          const ext = mName.split('.').pop()?.toLowerCase() || '';
-          let mimeType = 'application/octet-stream';
-          if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)) {
-            mimeType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
-          } else if (['mp3', 'wav', 'ogg', 'm4a', 'aac'].includes(ext)) {
-            mimeType = `audio/${ext === 'mp3' ? 'mpeg' : ext === 'm4a' ? 'mp4' : ext}`;
-          } else if (ext === 'pdf') mimeType = 'application/pdf';
-
-          try {
-            const base64Data = await entry.async('base64');
-            const uncompressedSize = (entry as any)._data?.uncompressedSize || 0;
-            const cleanName = mName.split('/').pop() || mName;
-            zipAttachments.push({
-              name: cleanName,
-              mimeType,
-              base64: base64Data,
-              size: uncompressedSize
-            });
-          } catch (err) {
-            console.warn(`Could not extract media file ${mName}:`, err);
-          }
-        }
-
-        await handleParsedTextFlow(rawText, chatFileName, file.size, zipAttachments);
-      } catch (err: any) {
-        setError(err.message || 'ZIP processing error.');
-        setParsing(false);
-      }
+    if (isMedia) {
+      setError(null);
+      setWizardFiles(fileArray);
     } else {
-      try {
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-          const text = e.target?.result as string;
-          if (!text) {
-            setError(getTranslation('emptyFile', language));
-            setParsing(false);
-            return;
-          }
-          await handleParsedTextFlow(text, file.name, file.size);
-        };
-        reader.onerror = () => {
-          setError(getTranslation('failedReadLocal', language));
-          setParsing(false);
-        };
-        reader.readAsText(file, 'utf-8');
-      } catch (err: any) {
-        setError(`File error: ${err.message}`);
-        setParsing(false);
-      }
+      processFile(firstFile);
     }
   };
 
@@ -229,10 +73,28 @@ export default function UpdateChatModal({ isOpen, onClose, digest, onSaveDigest,
     e.preventDefault();
     e.stopPropagation();
     setIsDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      processFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files) {
+      handleIncomingFiles(e.dataTransfer.files);
     }
   };
+
+  if (wizardFiles) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-20 bg-[#0A0A0A]/85 backdrop-blur-md overflow-y-auto animate-fadeIn" id="update-chat-modal">
+        <VideoImportWizard
+          files={wizardFiles}
+          onParsed={(newDigest) => {
+            onSaveDigest(newDigest);
+            onClose();
+          }}
+          onCancel={() => setWizardFiles(null)}
+          language={language}
+          importMode="merge"
+          mergeTargetDigest={digest}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-20 bg-[#0A0A0A]/85 backdrop-blur-md overflow-y-auto animate-fadeIn" id="update-chat-modal">
@@ -245,9 +107,13 @@ export default function UpdateChatModal({ isOpen, onClose, digest, onSaveDigest,
           <X className="w-4 h-4" />
         </button>
 
-        <div className="space-y-1">
+        <div className="space-y-1 text-left">
           <h2 className="text-lg font-semibold text-white">{getTranslation('updateDigestTitle', language)}</h2>
-          <p className="text-xs text-gray-400 font-light leading-relaxed">{getTranslation('updateDigestDesc', language)}</p>
+          <p className="text-xs text-gray-400 font-light leading-relaxed">
+            {language === 'nl'
+              ? 'Upload een nieuw WhatsApp exportbestand (.txt/.zip), screen recording video (.mp4) of screenshots om nieuwe berichten toe te voegen aan dit overzicht.'
+              : 'Upload a new WhatsApp export file (.txt/.zip), screen recording video (.mp4), or screenshots to add new messages to this digest.'}
+          </p>
         </div>
 
         <div
@@ -267,8 +133,9 @@ export default function UpdateChatModal({ isOpen, onClose, digest, onSaveDigest,
           <input
             ref={fileInputRef}
             type="file"
-            accept=".txt,.zip"
-            onChange={(e) => e.target.files?.[0] && processFile(e.target.files[0])}
+            accept=".txt,.zip,video/mp4,video/quicktime,video/webm,image/*"
+            multiple
+            onChange={(e) => e.target.files && handleIncomingFiles(e.target.files)}
             className="hidden"
             disabled={parsing || success}
           />
@@ -279,7 +146,7 @@ export default function UpdateChatModal({ isOpen, onClose, digest, onSaveDigest,
                 <Sparkles className="w-8 h-8 animate-spin" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-white">{status}</h3>
+                <h3 className="text-sm font-semibold text-white">{getTranslation('synthesizingGemini', language)}</h3>
               </div>
             </div>
           ) : success ? (
@@ -299,15 +166,19 @@ export default function UpdateChatModal({ isOpen, onClose, digest, onSaveDigest,
                 <Upload className="w-8 h-8" />
               </div>
               <div>
-                <h3 className="text-sm font-medium text-white">{getTranslation('dragDropText', language)}</h3>
+                <h3 className="text-sm font-medium text-white">
+                  {language === 'nl'
+                    ? 'Sleep uw bestand (.txt/.zip), video (.mp4) of screenshots hiernaartoe, of klik om te bladeren.'
+                    : 'Drag and drop your file (.txt/.zip), video (.mp4), or screenshots here, or click to browse.'}
+                </h3>
               </div>
             </div>
           )}
         </div>
 
         {error && (
-          <div className="p-4 rounded-xl bg-rose-950/20 border border-rose-900/40 flex items-start gap-3 text-rose-300 animate-fadeIn text-xs leading-relaxed">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+          <div className="p-4 rounded-xl bg-rose-950/20 border border-rose-900/40 flex items-start gap-3 text-rose-300 animate-fadeIn text-xs leading-relaxed text-left">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-450 font-bold" />
             <div>
               <p className="font-semibold text-rose-200">{getTranslation('invalidAttempt', language)}</p>
               <p className="font-light mt-0.5">{error}</p>

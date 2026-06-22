@@ -3,7 +3,9 @@ import { ChevronLeft } from 'lucide-react';
 import { ChatDigestData } from '../../types';
 import { Language, getTranslation } from '../../lib/translations';
 import { extractFramesFromVideo, FrameExtractionProgress } from './frameExtractor';
-import { buildDigestFromMediaData, sampleEvenly, deduplicateMessages } from './digestBuilder';
+import { buildDigestFromMediaData, sampleEvenly, deduplicateMessages, parseRawMediaMessages } from './digestBuilder';
+import { identifyNewMessages, mergeMessages, recalculateDigestStats, mergeActionItems, mergeDecisions } from '../../lib/merge';
+import { fetchWithRetry } from '../../lib/fetch';
 import ReviewStep from './ReviewStep';
 import { ExtractingStep, ProcessingStep, ErrorStep } from './WizardSteps';
 
@@ -12,6 +14,8 @@ interface VideoImportWizardProps {
   onParsed: (data: ChatDigestData) => void;
   onCancel: () => void;
   language: Language;
+  importMode?: 'new' | 'merge';
+  mergeTargetDigest?: ChatDigestData;
 }
 
 interface FrameItem {
@@ -20,27 +24,14 @@ interface FrameItem {
   tinyData?: Uint8ClampedArray;
 }
 
-const fetchWithRetry = async (
-  url: string,
-  options: RequestInit,
-  maxRetries = 2,
-  delay = 1000
-): Promise<Response> => {
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const response = await fetch(url, options);
-      if (response.ok) return response;
-      const isTransient = [429, 502, 503, 504].includes(response.status);
-      if (!isTransient || attempt === maxRetries) return response;
-    } catch (err) {
-      if (attempt === maxRetries) throw err;
-    }
-    await new Promise((resolve) => setTimeout(resolve, delay * Math.pow(2, attempt)));
-  }
-  throw new Error("Request failed after retries");
-};
-
-export default function VideoImportWizard({ files, onParsed, onCancel, language }: VideoImportWizardProps) {
+export default function VideoImportWizard({
+  files,
+  onParsed,
+  onCancel,
+  language,
+  importMode = 'new',
+  mergeTargetDigest,
+}: VideoImportWizardProps) {
   const [step, setStep] = useState<'init' | 'extracting' | 'review' | 'processing' | 'error'>('init');
   const [frames, setFrames] = useState<FrameItem[]>([]);
   const [progress, setProgress] = useState<FrameExtractionProgress>({ current: 0, total: 0 });
@@ -170,13 +161,33 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
         throw new Error("Gemini did not find any valid chat messages inside the screenshots.");
       }
 
+      const parsedNewMessages = parseRawMediaMessages(uniqueMessages);
+      let messagesToProcess = parsedNewMessages;
+
+      if (importMode === 'merge' && mergeTargetDigest) {
+        const newMessages = identifyNewMessages(mergeTargetDigest.messages, parsedNewMessages);
+        if (newMessages.length === 0) {
+          throw new Error(
+            language === 'nl'
+              ? 'Geen nieuwe berichten gevonden in deze screenshots/video.'
+              : 'No new messages found in these screenshots/video.'
+          );
+        }
+        messagesToProcess = mergeMessages(mergeTargetDigest.messages, parsedNewMessages);
+      }
+
+      const maxMsgsForDigest = 1200;
+      const slicedMessagesForDigest = messagesToProcess.length > maxMsgsForDigest
+        ? messagesToProcess.slice(-maxMsgsForDigest)
+        : messagesToProcess;
+
       const digestResponse = await fetchWithRetry('/api/digest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fileName: isVideo ? file.name : `${files.length} Screenshots`,
           fileSize: files.reduce((acc, f) => acc + f.size, 0),
-          messages: uniqueMessages,
+          messages: slicedMessagesForDigest,
           language
         }),
       }, 2, 1200);
@@ -188,15 +199,33 @@ export default function VideoImportWizard({ files, onParsed, onCancel, language 
       const totalSize = files.reduce((acc, f) => acc + f.size, 0);
       const compositeName = isVideo ? file.name : `${files.length} Screenshots`;
 
-      const digest = buildDigestFromMediaData({
-        messages: uniqueMessages,
-        summary: geminiDigest.summary,
-        executiveSummary: geminiDigest.executiveSummary,
-        keywords: geminiDigest.keywords,
-        decisions: geminiDigest.decisions,
-        actionItems: geminiDigest.actionItems
-      }, compositeName, totalSize);
-      onParsed(digest);
+      if (importMode === 'merge' && mergeTargetDigest) {
+        const statsDigest = recalculateDigestStats(
+          mergeTargetDigest,
+          messagesToProcess,
+          compositeName,
+          totalSize
+        );
+        const finalData: ChatDigestData = {
+          ...statsDigest,
+          summary: geminiDigest.summary,
+          executiveSummary: geminiDigest.executiveSummary,
+          keywords: geminiDigest.keywords,
+          decisions: mergeDecisions(mergeTargetDigest.decisions, geminiDigest.decisions),
+          actionItems: mergeActionItems(mergeTargetDigest.actionItems, geminiDigest.actionItems),
+        };
+        onParsed(finalData);
+      } else {
+        const digest = buildDigestFromMediaData({
+          messages: uniqueMessages,
+          summary: geminiDigest.summary,
+          executiveSummary: geminiDigest.executiveSummary,
+          keywords: geminiDigest.keywords,
+          decisions: geminiDigest.decisions,
+          actionItems: geminiDigest.actionItems
+        }, compositeName, totalSize);
+        onParsed(digest);
+      }
     } catch (err: any) {
       setErrorMessage(err.message || 'Error occurred while contacting the Gemini service.');
       setStep('error');
