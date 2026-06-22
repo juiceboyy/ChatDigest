@@ -156,7 +156,14 @@ export const translations = {
     processingChatMediaDesc: "Running OCR, sorting messages chronologically, and deduplicating overlapping segments. This takes about 10-15 seconds.",
     fpsLabel: "Frame Capture Rate (fps)",
     customInstructions: "Custom Context / Focus Instructions (Optional)",
-    btnBack: "Back"
+    btnBack: "Back",
+    periodFilterLabel: "Period:",
+    periodAllTime: "All Time",
+    periodLastWeek: "Last Week",
+    periodLastMonth: "Last Month",
+    periodCustom: "Custom Range",
+    startDate: "Start Date",
+    endDate: "End Date"
   },
   nl: {
     // App
@@ -313,7 +320,14 @@ export const translations = {
     processingChatMediaDesc: "OCR uitvoeren, berichten chronologisch sorteren en overlappende segmenten ontdubbelen. Dit duurt ongeveer 10-15 seconden.",
     fpsLabel: "Frame-opnamesnelheid (fps)",
     customInstructions: "Aangepaste Context / Instructies (Optioneel)",
-    btnBack: "Terug"
+    btnBack: "Terug",
+    periodFilterLabel: "Periode:",
+    periodAllTime: "Alle Tijd",
+    periodLastWeek: "Laatste Week",
+    periodLastMonth: "Laatste Maand",
+    periodCustom: "Aangepast Bereik",
+    startDate: "Begindatum",
+    endDate: "Einddatum"
   }
 };
 

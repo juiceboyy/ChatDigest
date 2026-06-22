@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search } from 'lucide-react';
 import { ChatDigestData } from '../types';
 import { exportPlaybookToPdf } from '../lib/pdfExporter';
-import { Language, getTranslation } from '../lib/translations';
+import { Language } from '../lib/translations';
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 import DashboardHeader from './dashboard/DashboardHeader';
@@ -17,11 +16,14 @@ import ChatAssistant from './dashboard/ChatAssistant';
 import MessagesLog from './dashboard/MessagesLog';
 import ItemDetailModal from './dashboard/ItemDetailModal';
 import UpdateChatModal from './dashboard/UpdateChatModal';
+import DateFilterBar from './dashboard/DateFilterBar';
+import FilterToolbar from './dashboard/FilterToolbar';
 
 // ── Hooks ──────────────────────────────────────────────────────────────────────
 import { useDashboard } from './dashboard/useDashboard';
 import { useMediaHandlers } from './dashboard/useMediaHandlers';
 import { useChatHandlers } from './dashboard/useChatHandlers';
+import { useDateFilter } from '../hooks/useDateFilter';
 
 interface DashboardProps {
   digest: ChatDigestData;
@@ -38,6 +40,32 @@ export default function Dashboard({
   onSaveDigest,
   language,
 }: DashboardProps) {
+  // ── Date Filtering ───────────────────────────────────────────────────────────
+  const {
+    dateFilterType,
+    setDateFilterType,
+    customStartDate,
+    setCustomStartDate,
+    customEndDate,
+    setCustomEndDate,
+    filteredDigest,
+  } = useDateFilter(digest);
+
+  // Wrapper to merge filtered saves back to full digest
+  const handleSaveDigestFiltered = (updatedFilteredDigest: ChatDigestData) => {
+    if (!onSaveDigest) return;
+    const mergedDigest: ChatDigestData = {
+      ...digest,
+      summary: updatedFilteredDigest.summary,
+      keywords: updatedFilteredDigest.keywords,
+      decisions: updatedFilteredDigest.decisions,
+      actionItems: updatedFilteredDigest.actionItems,
+      playbook: updatedFilteredDigest.playbook,
+      executiveSummary: updatedFilteredDigest.executiveSummary,
+    };
+    onSaveDigest(mergedDigest);
+  };
+
   // ── Filter state ─────────────────────────────────────────────────────────────
   const [searchTerm, setSearchTerm] = useState('');
   const [filterParticipant, setFilterParticipant] = useState<string | null>(null);
@@ -73,7 +101,7 @@ export default function Dashboard({
     handleSavePlayEdit,
     handleDeletePlay,
     handleAddPlay,
-  } = useDashboard({ digest, onSaveDigest, language });
+  } = useDashboard({ digest: filteredDigest, onSaveDigest: handleSaveDigestFiltered, language });
 
   const {
     mediaFile,
@@ -93,7 +121,7 @@ export default function Dashboard({
     handleMergeMediaIntoDigest,
     handleDeleteParsedMedia,
     executeDeleteParsedMedia,
-  } = useMediaHandlers({ digest, onSaveDigest, language });
+  } = useMediaHandlers({ digest: filteredDigest, onSaveDigest: handleSaveDigestFiltered, language });
 
   const {
     queryInput,
@@ -112,7 +140,7 @@ export default function Dashboard({
     handleReAudit,
     handleConfirmCommitDecision,
     handleToggleContradictionPartDelete,
-  } = useChatHandlers({ digest, onSaveDigest, language });
+  } = useChatHandlers({ digest: filteredDigest, onSaveDigest: handleSaveDigestFiltered, language });
 
   // Escape key to close detail modal
   useEffect(() => {
@@ -123,43 +151,35 @@ export default function Dashboard({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Scroll to top when detail modal opens
+  // Scroll to top when modals open
   useEffect(() => {
-    if (selectedDetail) {
+    if (selectedDetail || isUpdateModalOpen) {
       const scroller = document.getElementById('main-scroller');
       if (scroller) scroller.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [selectedDetail]);
+  }, [selectedDetail, isUpdateModalOpen]);
 
-  // Scroll to top when update chat modal opens
-  useEffect(() => {
-    if (isUpdateModalOpen) {
-      const scroller = document.getElementById('main-scroller');
-      if (scroller) scroller.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  }, [isUpdateModalOpen]);
-
-  const firstParticipant = digest.participants[0] || '';
+  const firstParticipant = filteredDigest.participants[0] || '';
 
   return (
     <div className="space-y-6" id="dashboard-root">
       {/* Header */}
       <DashboardHeader
-        digest={digest}
+        digest={filteredDigest}
         onUpdateChat={() => setIsUpdateModalOpen(true)}
         language={language}
       />
 
       {/* Executive snapshot */}
       <ExecSummaryCard
-        executiveSummary={digest.executiveSummary}
+        executiveSummary={filteredDigest.executiveSummary}
         isGenerating={isGeneratingExecSummary}
         error={execSummaryError}
         isEditing={isEditingExecSummary}
         editingText={editingExecSummaryText}
         onEditingTextChange={setEditingExecSummaryText}
         onStartEdit={() => {
-          setEditingExecSummaryText(digest.executiveSummary || '');
+          setEditingExecSummaryText(filteredDigest.executiveSummary || '');
           setIsEditingExecSummary(true);
         }}
         onSaveEdit={handleSaveExecSummaryEdit}
@@ -169,72 +189,48 @@ export default function Dashboard({
 
       {/* Summary panel */}
       <SummaryPanel
-        digest={digest}
+        digest={filteredDigest}
         isSynthesizing={isSynthesizing}
         synthesisError={synthesisError}
         onSynthesize={handleSynthesize}
       />
 
+      {/* Date Filter Bar */}
+      <DateFilterBar
+        dateFilterType={dateFilterType}
+        setDateFilterType={setDateFilterType}
+        customStartDate={customStartDate}
+        setCustomStartDate={setCustomStartDate}
+        customEndDate={customEndDate}
+        setCustomEndDate={setCustomEndDate}
+        language={language}
+      />
+
       {/* Filter toolbar */}
-      <div className="p-4 bg-[#121212] rounded-xl border border-white/5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-inner" id="filter-toolbar">
-        <div className="relative flex-1" id="search-box">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-          <input
-            type="text"
-            placeholder={getTranslation('searchPlaceholder', language)}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-[#0A0A0A] border border-white/10 rounded pl-10 pr-4 py-2 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500/50 transition-colors"
-          />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 hover:text-gray-300"
-            >
-              {getTranslation('clearSearch', language)}
-            </button>
-          )}
-        </div>
-        <div className="flex items-center gap-2 overflow-x-auto py-1 pr-1" id="speaker-filter-list">
-          <span className="text-xs text-gray-500 font-light shrink-0">Speaker:</span>
-          <button
-            onClick={() => setFilterParticipant(null)}
-            className={`px-3 py-1.5 rounded text-[11px] font-medium transition-all shrink-0 ${filterParticipant === null ? 'bg-blue-500/10 border border-blue-500/30 text-blue-400' : 'bg-[#0A0A0A] border border-white/5 text-gray-400 hover:border-white/10 hover:text-white'}`}
-          >
-            {getTranslation('allContributors', language)}
-          </button>
-          {digest.participants.slice(0, 5).map((name) => (
-            <button
-              key={name}
-              onClick={() => setFilterParticipant(name === filterParticipant ? null : name)}
-              className={`px-3 py-1.5 rounded text-[11px] font-medium transition-all truncate shrink-0 max-w-[120px] ${name === filterParticipant ? 'bg-blue-500/10 border border-blue-500/30 text-blue-400' : 'bg-[#0A0A0A] border border-white/5 text-gray-400 hover:border-white/10 hover:text-white'}`}
-            >
-              {name}
-            </button>
-          ))}
-          {digest.participants.length > 5 && (
-            <div className="text-[10px] text-slate-500 font-light shrink-0 self-center pl-1">
-              +{digest.participants.length - 5} {getTranslation('moreSpeakers', language)}
-            </div>
-          )}
-        </div>
-      </div>
+      <FilterToolbar
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        filterParticipant={filterParticipant}
+        setFilterParticipant={setFilterParticipant}
+        participants={filteredDigest.participants}
+        language={language}
+      />
 
       {/* Three-column grid: Timeline | Decisions | Action Items */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5" id="core-metrics-grid">
         <TimelineColumn
-          digest={digest}
+          digest={filteredDigest}
           language={language}
         />
         <DecisionsColumn
-          digest={digest}
+          digest={filteredDigest}
           searchTerm={searchTerm}
           filterParticipant={filterParticipant}
           onSelectDetail={setSelectedDetail}
           language={language}
         />
         <ActionItemsColumn
-          actionItems={digest.actionItems}
+          actionItems={filteredDigest.actionItems}
           searchTerm={searchTerm}
           filterParticipant={filterParticipant}
           onUpdateActionItem={onUpdateActionItem}
@@ -245,11 +241,11 @@ export default function Dashboard({
 
       {/* Playbook */}
       <PlaybookSection
-        digest={digest}
+        digest={filteredDigest}
         isGeneratingPlaybook={isGeneratingPlaybook}
         playbookError={playbookError}
         onGeneratePlaybook={handleGeneratePlaybook}
-        onExportPlaybookPDF={() => exportPlaybookToPdf(digest)}
+        onExportPlaybookPDF={() => exportPlaybookToPdf(filteredDigest)}
         onAddPlay={handleAddPlay}
         onSavePlayEdit={handleSavePlayEdit}
         onDeletePlay={handleDeletePlay}
@@ -258,7 +254,7 @@ export default function Dashboard({
 
       {/* Media analyzer */}
       <MediaAnalyzer
-        digest={digest}
+        digest={filteredDigest}
         mediaFile={mediaFile}
         mediaBase64={mediaBase64}
         mediaLoading={mediaLoading}
@@ -291,7 +287,7 @@ export default function Dashboard({
 
       {/* Messages log */}
       <MessagesLog
-        messages={digest.messages}
+        messages={filteredDigest.messages}
         searchTerm={searchTerm}
         filterParticipant={filterParticipant}
         firstParticipant={firstParticipant}
@@ -299,7 +295,7 @@ export default function Dashboard({
 
       {/* Modals */}
       <ItemDetailModal
-        digest={digest}
+        digest={filteredDigest}
         selectedDetail={selectedDetail}
         committingDecision={committingDecision}
         contradictions={contradictions}
@@ -335,7 +331,7 @@ export default function Dashboard({
       <UpdateChatModal
         isOpen={isUpdateModalOpen}
         onClose={() => setIsUpdateModalOpen(false)}
-        digest={digest}
+        digest={digest} // Keep raw unfiltered digest here so update operation matches all history
         onSaveDigest={onSaveDigest || (() => {})}
         language={language}
       />
