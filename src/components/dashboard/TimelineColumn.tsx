@@ -16,12 +16,12 @@ export default function TimelineColumn({
 }: TimelineColumnProps) {
   const totalMessages = digest.messages.length;
   const [hoveredNode, setHoveredNode] = useState<{
+    x: number;
+    y: number;
     dateStr: string;
     avgSentiment: number;
     messageCount: number;
     topSender: string;
-    clientX: number;
-    clientY: number;
   } | null>(null);
 
   const svgSparklinePoints = useMemo(() => {
@@ -129,15 +129,14 @@ export default function TimelineColumn({
                     stroke={pointColor}
                     strokeWidth="1.5"
                     className="transition-transform hover:scale-150 cursor-pointer"
-                    onMouseEnter={(e) => {
-                      const rect = e.currentTarget.getBoundingClientRect();
+                    onMouseEnter={() => {
                       setHoveredNode({
+                        x: point.x,
+                        y: point.y,
                         dateStr: originalNode.dateStr,
                         avgSentiment: originalNode.avgSentiment,
                         messageCount: originalNode.messageCount,
                         topSender: originalNode.topSender,
-                        clientX: rect.left + rect.width / 2,
-                        clientY: rect.top - 8,
                       });
                     }}
                     onMouseLeave={() => setHoveredNode(null)}
@@ -145,6 +144,32 @@ export default function TimelineColumn({
                 );
               })}
             </svg>
+            {hoveredNode && (
+              <div
+                className="absolute z-20 bg-[#161616]/95 backdrop-blur-md border border-white/10 p-2.5 rounded-lg shadow-xl text-left pointer-events-none -translate-x-1/2 -translate-y-full text-[10px] space-y-0.5 w-36 transition-all duration-100 ease-out"
+                style={{
+                  left: `${(hoveredNode.x / 500) * 100}%`,
+                  top: `${(hoveredNode.y / 120) * 100 - 8}%`,
+                }}
+              >
+                <div className="font-semibold text-white border-b border-white/5 pb-1 mb-1 flex justify-between items-center">
+                  <span>{hoveredNode.dateStr}</span>
+                  <span className={`w-1.5 h-1.5 rounded-full ${hoveredNode.avgSentiment > 0.1 ? 'bg-emerald-500 animate-pulse' : hoveredNode.avgSentiment < -0.1 ? 'bg-rose-500' : 'bg-gray-500'}`} />
+                </div>
+                <div className="text-gray-400">
+                  Messages: <span className="font-medium text-gray-250">{hoveredNode.messageCount}</span>
+                </div>
+                <div className="text-gray-400">
+                  Sentiment:{' '}
+                  <span className={`font-medium ${hoveredNode.avgSentiment > 0.1 ? 'text-emerald-400' : hoveredNode.avgSentiment < -0.1 ? 'text-rose-400' : 'text-gray-400'}`}>
+                    {hoveredNode.avgSentiment > 0.1 ? 'Positive' : hoveredNode.avgSentiment < -0.1 ? 'Constructive' : 'Neutral'}
+                  </span>
+                </div>
+                <div className="text-gray-400 truncate">
+                  Top Speaker: <span className="font-medium text-blue-450 font-semibold">{hoveredNode.topSender}</span>
+                </div>
+              </div>
+            )}
             <div className="flex justify-between items-center mt-2 pt-1 border-t border-[#222] text-[9px] text-gray-500 font-mono">
               <span>Start ({digest.startDateStr.split(',')[0]})</span>
               <span className="flex items-center gap-1">
@@ -218,36 +243,6 @@ export default function TimelineColumn({
           );
         })}
       </div>
-
-      {hoveredNode && (
-        <div
-          style={{
-            position: 'fixed',
-            left: `${hoveredNode.clientX}px`,
-            top: `${hoveredNode.clientY}px`,
-            transform: 'translate(-50%, -100%)',
-          }}
-          className="z-50 p-3 bg-[#0F0F0F]/95 backdrop-blur-md border border-white/10 rounded-lg shadow-xl text-left pointer-events-none min-w-[150px] animate-fadeIn"
-        >
-          <p className="text-[10px] font-bold text-white mb-1.5">{hoveredNode.dateStr}</p>
-          <div className="space-y-1 text-[9px] font-mono text-gray-400">
-            <div className="flex justify-between gap-4">
-              <span>Messages:</span>
-              <span className="text-blue-450 font-semibold">{hoveredNode.messageCount}</span>
-            </div>
-            <div className="flex justify-between gap-4">
-              <span>Sentiment:</span>
-              <span className={hoveredNode.avgSentiment > 0.1 ? 'text-emerald-405' : hoveredNode.avgSentiment < -0.1 ? 'text-rose-455' : 'text-gray-300'}>
-                {hoveredNode.avgSentiment}
-              </span>
-            </div>
-            <div className="flex justify-between gap-4">
-              <span>Top Speaker:</span>
-              <span className="text-gray-250 font-medium truncate max-w-[85px]">{hoveredNode.topSender}</span>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
