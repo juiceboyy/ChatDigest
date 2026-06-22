@@ -37,6 +37,7 @@ export async function generateContentWithRetry(
   delayMs = 500
 ): Promise<any> {
   const fallbackModels = [
+    "gemini-3.5-flash",
     "gemini-2.5-flash",
     "gemini-1.5-flash",
   ];

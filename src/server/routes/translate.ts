@@ -35,7 +35,7 @@ ${JSON.stringify(actionItems || [])}
 Output the translations in the exact same structured JSON schema.`;
 
     const response = await generateContentWithRetry(ai, {
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",

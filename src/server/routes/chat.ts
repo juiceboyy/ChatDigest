@@ -63,7 +63,7 @@ Provide crisp, authoritative answers to the user's questions. You have access to
     });
 
     const response = await generateContentWithRetry(ai, {
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents,
       config: {
         systemInstruction,

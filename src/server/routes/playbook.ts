@@ -46,7 +46,7 @@ ${actionsText || "No action items created yet."}
 Generate the complete Operational Playbook now.`;
 
     const response = await generateContentWithRetry(ai, {
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: prompt,
       config: {
         systemInstruction,

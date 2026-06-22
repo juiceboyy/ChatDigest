@@ -55,3 +55,4 @@ This guide outlines the commands, architecture, and coding guidelines for the Ch
 6.  **API Error Handling**: Never assume a failed `Response` contains JSON. Always use a safe fallback pattern (like `handleResponseError` in `useDigestStorage.ts` or `UploadZone.tsx`) consistently for every `!response.ok` block.
 7.  **Netlify Serverless Routing**: A path-rewriting middleware at the top of `createExpressApp()` in [server.ts](file:///Volumes/T7%20Shield/Vibe%20Coding/ChatDigest/server.ts) strips the `/.netlify/functions/api` prefix. Do not remove this middleware.
 8.  **Language Support**: All API routes accept a `language` field (`"en"` or `"nl"`). Gemini prompts must inject `langInstruction` into prompt text and the `responseSchema` field descriptions.
+9.  **AI Models**: Always use `"gemini-3.5-flash"` as the primary Gemini AI model of choice for all generation, chat, translation, and analysis routes.

@@ -162,7 +162,7 @@ ${langInstruction}`;
         };
 
     const response = await generateContentWithRetry(ai, {
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: [...imageParts, prompt],
       config: {
         systemInstruction,

@@ -34,7 +34,7 @@ ${langInstruction}`;
     const prompt = `Here is the conversation text:\n${conversationText}\n\nGenerate the 2-3 sentence executive summary now.`;
 
     const response = await generateContentWithRetry(ai, {
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: prompt,
       config: {
         systemInstruction,
