@@ -58,7 +58,7 @@ Please analyze the discussions and output the result in structured JSON. Include
      - Otherwise, set "completed" to false, and leave "completedBy" and "completedMessage" empty.`;
 
     const response = await generateContentWithRetry(ai, {
-      model: "gemini-3.5-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",

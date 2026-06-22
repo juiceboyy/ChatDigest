@@ -38,7 +38,7 @@ Your job is to parse this media file and extract:
     const prompt = userPrompt || "Parse this media attachment and extract its description, key decisions, and action items.";
 
     const response = await generateContentWithRetry(ai, {
-      model: "gemini-3.5-flash",
+      model: "gemini-2.5-flash",
       contents: [mediaPart, prompt],
       config: {
         systemInstruction,

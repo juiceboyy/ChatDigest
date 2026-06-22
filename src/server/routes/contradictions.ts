@@ -48,7 +48,7 @@ ${decisionsList || "(No existing decisions. Ledger is empty.)"}
 If any existing decisions are contrary to the new decision, identify them and break them down if multi-part. Output the results in the required JSON schema.`;
 
     const response = await generateContentWithRetry(ai, {
-      model: "gemini-3.5-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         systemInstruction,
