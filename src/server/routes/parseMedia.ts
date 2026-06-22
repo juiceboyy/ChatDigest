@@ -43,6 +43,7 @@ Your job is to parse this media file and extract:
       config: {
         systemInstruction,
         responseMimeType: "application/json",
+        temperature: 0.0,
         responseSchema: {
           type: Type.OBJECT,
           properties: {

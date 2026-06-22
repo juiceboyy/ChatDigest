@@ -103,6 +103,7 @@ export function useDashboard({ digest, onSaveDigest, language }: UseDashboardPro
           completedBy: a.completedBy || undefined,
           completedMessage: a.completedMessage || undefined,
         })),
+        executiveSummary: undefined,
       };
       if (onSaveDigest) onSaveDigest(finalData);
     } catch (err: any) {

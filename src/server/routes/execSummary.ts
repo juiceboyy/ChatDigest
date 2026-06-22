@@ -13,7 +13,7 @@ router.post("/executive-summary", async (req, res) => {
 
     const ai = createGeminiClient();
 
-    const maxMsgs = 500;
+    const maxMsgs = 200;
     const slicedMessages = messages.length > maxMsgs ? messages.slice(-maxMsgs) : messages;
 
     const conversationText = slicedMessages
@@ -38,6 +38,7 @@ ${langInstruction}`;
       contents: prompt,
       config: {
         systemInstruction,
+        temperature: 0.0,
       },
     });
 

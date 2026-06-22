@@ -51,6 +51,7 @@ Generate the complete Operational Playbook now.`;
       config: {
         systemInstruction,
         responseMimeType: "application/json",
+        temperature: 0.0,
         responseSchema: {
           type: Type.OBJECT,
           properties: {

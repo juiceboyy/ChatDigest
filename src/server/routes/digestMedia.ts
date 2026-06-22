@@ -167,6 +167,7 @@ ${langInstruction}`;
       config: {
         systemInstruction,
         responseMimeType: "application/json",
+        temperature: 0.0,
         responseSchema
       }
     });

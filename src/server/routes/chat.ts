@@ -20,7 +20,7 @@ router.post("/chat", async (req, res) => {
       day: "numeric",
     });
 
-    const maxMsgs = 1200;
+    const maxMsgs = 500;
     const slicedMessages = messages.length > maxMsgs ? messages.slice(-maxMsgs) : messages;
 
     const conversationText = slicedMessages
@@ -67,6 +67,7 @@ Provide crisp, authoritative answers to the user's questions. You have access to
       contents,
       config: {
         systemInstruction,
+        temperature: 0.0,
       },
     });
 

@@ -53,6 +53,7 @@ If any existing decisions are contrary to the new decision, identify them and br
       config: {
         systemInstruction,
         responseMimeType: "application/json",
+        temperature: 0.0,
         responseSchema: {
           type: Type.OBJECT,
           properties: {

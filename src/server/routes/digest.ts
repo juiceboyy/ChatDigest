@@ -14,7 +14,7 @@ router.post("/digest", async (req, res) => {
 
     const ai = createGeminiClient();
 
-    const maxMsgs = 500;
+    const maxMsgs = 200;
     const slicedMessages = messages.length > maxMsgs ? messages.slice(-maxMsgs) : messages;
 
     const conversationText = slicedMessages
@@ -45,11 +45,10 @@ ${conversationText}
 
 Please analyze the discussions and output the result in structured JSON. Include:
 1. "summary": A detailed, beautiful markdown-formatted executive summary (written in third-person, around 1-2 paragraphs maximum). Use bold styling (**text**) or bullets for major focus points. Keep it concise.
-2. "executiveSummary": A highly polished, concise 2 to 3 sentence executive summary that answers 'what is the entire conversation about?' and states the core resolution or status cleanly in prose. Must be exactly 2-3 sentences.
-3. "keywords": 5 to 10 key topic words / hashtags that define this chat thread.
-4. "decisions": List the concrete consensus items, agreements, or signed-off choices made by members. Make sure to identify 'sender', 'text', and 'dateStr'.
+2. "keywords": 5 to 10 key topic words / hashtags that define this chat thread.
+3. "decisions": List the concrete consensus items, agreements, or signed-off choices made by members. Make sure to identify 'sender', 'text', and 'dateStr'.
    - MANDATORY DATE RULE: The 'dateStr' field MUST be the exact date when the message was sent (extracted strictly from the bracketed metadata at the start of the message, e.g., '[2026-06-20 ...]' becomes 'June 20, 2026'). Crucially, NEVER use dates of future events or anniversary celebration dates mentioned in the body of the message (e.g., if a message on June 20 discusses a party on June 27, the decision's dateStr must be June 20, 2026, NOT June 27, 2026). This date MUST always be on or before ${todayStr}.
-5. "actionItems": List specific to-do tasks and assignments. Identify who is responsible ('sender'), what task was requested ('text'), and when it was defined ('dateStr').
+4. "actionItems": List specific to-do tasks and assignments. Identify who is responsible ('sender'), what task was requested ('text'), and when it was defined ('dateStr').
    - MANDATORY DATE RULE: The 'dateStr' field MUST be the exact date when the message requesting the task was sent (extracted strictly from the bracketed metadata of the message). Never use event or plan dates discussed inside the message body. This date MUST always be on or before ${todayStr}.
    - COMPLETION ANALYSIS: Scan subsequent messages in the conversation history to see if the task was later completed or addressed in the chat. If a participant explicitly reports completing it, or it is clear from the discussion that the task is finished:
      - Set "completed" to true.
@@ -62,16 +61,13 @@ Please analyze the discussions and output the result in structured JSON. Include
       contents: prompt,
       config: {
         responseMimeType: "application/json",
+        temperature: 0.0,
         responseSchema: {
           type: Type.OBJECT,
           properties: {
             summary: {
               type: Type.STRING,
               description: `Deep analytical executive summary in beautiful markdown. MUST BE WRITTEN ENTIRELY IN ${language === "nl" ? "Dutch (Nederlands)" : "English"}. Put terms of note or project names in bold styling. 1-2 paragraphs maximum.`,
-            },
-            executiveSummary: {
-              type: Type.STRING,
-              description: `A highly polished, concise 2 to 3 sentence executive summary of the entire conversation. MUST BE WRITTEN ENTIRELY IN ${language === "nl" ? "Dutch (Nederlands)" : "English"}. Exactly 2-3 sentences.`,
             },
             keywords: {
               type: Type.ARRAY,
@@ -121,7 +117,7 @@ Please analyze the discussions and output the result in structured JSON. Include
               },
             },
           },
-          required: ["summary", "executiveSummary", "keywords", "decisions", "actionItems"],
+          required: ["summary", "keywords", "decisions", "actionItems"],
         },
       },
     });
@@ -135,7 +131,6 @@ Please analyze the discussions and output the result in structured JSON. Include
 
     res.json({
       summary: parsedJSON.summary,
-      executiveSummary: parsedJSON.executiveSummary,
       keywords: parsedJSON.keywords,
       decisions: parsedJSON.decisions,
       actionItems: parsedJSON.actionItems,

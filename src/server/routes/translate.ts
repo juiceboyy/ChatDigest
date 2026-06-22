@@ -39,6 +39,7 @@ Output the translations in the exact same structured JSON schema.`;
       contents: prompt,
       config: {
         responseMimeType: "application/json",
+        temperature: 0.0,
         responseSchema: {
           type: Type.OBJECT,
           properties: {
