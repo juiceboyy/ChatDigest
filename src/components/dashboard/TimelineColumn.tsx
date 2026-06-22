@@ -146,10 +146,10 @@ export default function TimelineColumn({
             </svg>
             {hoveredNode && (
               <div
-                className="absolute z-20 bg-[#161616]/95 backdrop-blur-md border border-white/10 p-2.5 rounded-lg shadow-xl text-left pointer-events-none -translate-x-1/2 -translate-y-full text-[10px] space-y-0.5 w-36 transition-all duration-100 ease-out"
+                className="absolute z-20 bg-[#161616]/95 backdrop-blur-md border border-white/10 p-2.5 rounded-lg shadow-xl text-left pointer-events-none -translate-x-1/2 -translate-y-full text-[10px] space-y-0.5 w-36"
                 style={{
                   left: `${(hoveredNode.x / 500) * 100}%`,
-                  top: `${(hoveredNode.y / 120) * 100 - 8}%`,
+                  top: `calc(${(hoveredNode.y / 120) * 100}% - 12px)`,
                 }}
               >
                 <div className="font-semibold text-white border-b border-white/5 pb-1 mb-1 flex justify-between items-center">

@@ -105,10 +105,10 @@ export default function ExpandedTimelineView({ digest, language }: ExpandedTimel
             </svg>
             {hoveredNode && (
               <div
-                className="absolute z-20 bg-[#161616]/95 backdrop-blur-md border border-white/10 p-3 rounded-lg shadow-xl text-left pointer-events-none -translate-x-1/2 -translate-y-full text-[11px] space-y-1 w-44 transition-all duration-100 ease-out"
+                className="absolute z-20 bg-[#161616]/95 backdrop-blur-md border border-white/10 p-3 rounded-lg shadow-xl text-left pointer-events-none -translate-x-1/2 -translate-y-full text-[11px] space-y-1 w-44"
                 style={{
                   left: `${(hoveredNode.x / 900) * 100}%`,
-                  top: `${(hoveredNode.y / 220) * 100 - 6}%`,
+                  top: `calc(${(hoveredNode.y / 220) * 100}% - 14px)`,
                 }}
               >
                 <div className="font-semibold text-white border-b border-white/5 pb-1 mb-1 flex justify-between items-center">
