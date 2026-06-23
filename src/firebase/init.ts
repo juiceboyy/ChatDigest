@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore } from 'firebase/firestore';
 import config from '../../firebase-applet-config.json';
 
 // Initialize Firebase App
@@ -15,7 +15,9 @@ const app = initializeApp({
 
 // Initialize core services — exported for use by auth.ts and firestoreDigests.ts
 export const auth = getAuth(app);
-export const db = getFirestore(app, config.firestoreDatabaseId || '(default)');
+export const db = initializeFirestore(app, {
+  ignoreUndefinedProperties: true,
+}, config.firestoreDatabaseId || '(default)');
 export const googleProvider = new GoogleAuthProvider();
 
 // ── Error Handling Infrastructure ─────────────────────────────────────────────

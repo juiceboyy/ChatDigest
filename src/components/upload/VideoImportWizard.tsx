@@ -117,7 +117,7 @@ export default function VideoImportWizard({
     setStep('processing');
     setErrorMessage('');
 
-    const chunkSize = 6;
+    const chunkSize = 3;
     const chunks: FrameItem[][] = [];
     for (let i = 0; i < filteredFrames.length; i += (chunkSize - 1)) {
       const chunk = filteredFrames.slice(i, i + chunkSize);

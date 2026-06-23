@@ -48,7 +48,7 @@ export function extractFramesFromVideo(
         const tinyCanvas = document.createElement('canvas');
         tinyCanvas.width = 32;
         tinyCanvas.height = 32;
-        const tinyCtx = tinyCanvas.getContext('2d');
+        const tinyCtx = tinyCanvas.getContext('2d', { willReadFrequently: true });
         let prevTinyData: Uint8ClampedArray | null = null;
 
         const interval = 1 / fps;
