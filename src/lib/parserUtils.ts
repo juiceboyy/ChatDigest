@@ -17,15 +17,20 @@ export function standardizeDateStr(rawDate: string): string {
   // Replace symbols like dots or dashes with forward slashes
   let sanitized = rawDate.replace(/[.\-]/g, '/');
   
-  // Try to parse format 15/06/2026 or 06/15/2026
+  // Try to parse format 15/06/2026 or 2026/06/15
   const parts = sanitized.split('/');
   if (parts.length === 3) {
     let day = parts[0];
     let month = parts[1];
     let year = parts[2];
 
-    // Handle year 2 digits
-    if (year.length === 2) {
+    // Handle YYYY-MM-DD format (where day part is 4 digits)
+    if (day.length === 4) {
+      year = parts[0];
+      month = parts[1];
+      day = parts[2];
+    } else if (year.length === 2) {
+      // Handle year 2 digits
       year = '20' + year;
     }
 

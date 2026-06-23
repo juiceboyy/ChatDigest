@@ -27,6 +27,16 @@ router.post("/digest-media", async (req, res) => {
       month: "long",
       day: "numeric",
     });
+    const currentYear = todayObj.getFullYear();
+
+    const dateResolutionInstruction = `
+CRITICAL DATE RESOLUTION RULES:
+- Today's date is: ${todayStr}.
+- If a message displays a relative date like "vandaag" (today) or "gisteren" (yesterday), you must resolve it relative to today's date (${todayStr}). E.g., if today is June 24, 2026, then "gisteren" resolves to "2026-06-23".
+- If a message displays a date without a year (such as "20 juni", "June 20", "20-06" or "20/06"), it ALWAYS refers to the current calendar year, which is ${currentYear}. You MUST resolve this date to the format YYYY-MM-DD (e.g., "2026-06-20").
+- Every message's "dateStr" MUST be strictly formatted as YYYY-MM-DD. Never output raw month names or relative terms in the "dateStr" field.
+- Any decision or action item parsed must be dated ONLY with the exact date when the message was sent (the resolved dateStr format YYYY-MM-DD).
+- Any date in the future (after ${todayStr}) HAS NOT HAPPENED YET. Never use planned future event dates as the decision's or action item's dateStr. The dateStr must represent the date when the decision was agreed upon.`;
 
     const langInstruction = `IMPORTANT: You must write all output text, analysis, markdown text, titles, descriptions, explanations, and summaries in ${language === "nl" ? "Dutch" : "English"}.`;
 
@@ -40,9 +50,11 @@ Your tasks are:
 2. For each message, extract:
    - "sender": The name of the participant.
    - "text": The clean message body.
-   - "dateStr": The date when the message was sent (e.g. YYYY-MM-DD or standard readable format).
+   - "dateStr": The date when the message was sent in YYYY-MM-DD format.
    - "timeStr": The time when the message was sent (e.g. HH:MM).
 3. Combine overlapping message fragments across frames so that each message appears exactly once in the final output.
+
+${dateResolutionInstruction}
 
 ${langInstruction}`
       : `You are an expert AI multimodal chat log reconstructor.
@@ -54,7 +66,7 @@ Your tasks are:
 2. For each message, extract:
    - "sender": The name of the participant.
    - "text": The clean message body.
-   - "dateStr": The date when the message was sent.
+   - "dateStr": The date when the message was sent in YYYY-MM-DD format.
    - "timeStr": The time when the message was sent.
 3. Combine overlapping message fragments across frames so that each message appears exactly once in the final output.
 4. Generate:
@@ -69,10 +81,7 @@ Your tasks are:
        - Set "completedMessage" to the exact message text (or a very close translation/summary of it) that refers to the completion.
        - Otherwise, set "completed" to false, and leave "completedBy" and "completedMessage" empty.
 
-CRITICAL LOGICAL RULE & CONTEXT:
-Today's date is: ${todayStr} (June 21, 2026).
-Any date in the future (after ${todayStr}) HAS NOT HAPPENED YET. Any decision or action item parsed must be dated ONLY with the exact date when the message was sent.
-NEVER use planned future event dates as the decision's or action item's dateStr. The dateStr must represent the date when the decision was agreed upon.
+${dateResolutionInstruction}
 
 ${langInstruction}`;
 
