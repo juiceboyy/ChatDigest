@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
-import { Clock, Smile, Meh, Frown, Maximize2 } from 'lucide-react';
-import { ChatDigestData, TimelineDataPoint } from '../../types';
+import React from 'react';
+import { Clock, Maximize2 } from 'lucide-react';
+import { ChatDigestData } from '../../types';
 import { Language, getTranslation } from '../../lib/translations';
 
 interface TimelineColumnProps {
@@ -17,40 +17,7 @@ export default function TimelineColumn({
   onSelectDate,
 }: TimelineColumnProps) {
   const totalMessages = digest.messages.length;
-  const [hoveredNode, setHoveredNode] = useState<{
-    x: number;
-    y: number;
-    dateStr: string;
-    avgSentiment: number;
-    messageCount: number;
-    topSender: string;
-  } | null>(null);
 
-  const svgSparklinePoints = useMemo(() => {
-    const list = digest.timeline;
-    if (list.length <= 1) return [];
-    const paddingX = 25, paddingY = 20;
-    const chartWidth = 500 - paddingX * 2;
-    const chartHeight = 120 - paddingY * 2;
-    const stepX = chartWidth / (list.length - 1);
-    return list.map((node, i) => ({
-      x: paddingX + i * stepX,
-      y: paddingY + ((1 - node.avgSentiment) / 2) * chartHeight,
-    }));
-  }, [digest.timeline]);
-
-  const svgSparklinePointsPath = useMemo(() => {
-    if (svgSparklinePoints.length === 0) return '';
-    return svgSparklinePoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-  }, [svgSparklinePoints]);
-
-  const svgSparklineAreaPath = useMemo(() => {
-    if (svgSparklinePoints.length === 0) return '';
-    const start = `M ${svgSparklinePoints[0].x} 100`;
-    const line = svgSparklinePoints.map((p) => `L ${p.x} ${p.y}`).join(' ');
-    const end = `L ${svgSparklinePoints[svgSparklinePoints.length - 1].x} 100 Z`;
-    return `${start} ${line} ${end}`;
-  }, [svgSparklinePoints]);
   return (
     <div
       className="lg:col-span-4 bg-[#121212] rounded-xl border border-white/5 p-5 flex flex-col h-[540px] hover:border-white/10 transition-colors"
@@ -81,143 +48,16 @@ export default function TimelineColumn({
         </div>
       </div>
 
-      {/* Sparkline trend chart */}
-      <div
-        className="bg-[#0A0A0A] p-3 rounded-lg border border-white/10 mb-4 shrink-0"
-        id="sparkline-trend-card"
-      >
-        <div className="flex items-center justify-between text-[10px] text-gray-400 mb-2 font-mono">
-          <span className="flex items-center gap-1.5 font-sans font-medium text-gray-305">
-            Sentiment Trends Sparkline
-          </span>
-          <span className="text-[9px] uppercase tracking-wider text-gray-500">Chronological Wave</span>
-        </div>
-
-        {digest.timeline.length <= 1 ? (
-          <div className="h-16 flex items-center justify-center text-center text-[10px] text-gray-500 italic pb-2">
-            Not enough data nodes to chart sentiment trends
-          </div>
-        ) : (
-          <div className="relative" id="trend-canvas-container">
-            <svg viewBox="0 0 500 120" className="w-full h-18 text-blue-500" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <line x1="10" y1="60" x2="490" y2="60" stroke="#222" strokeWidth="0.8" strokeDasharray="3,3" />
-              <path d={svgSparklineAreaPath} fill="url(#chartGradient)" />
-              <path
-                d={svgSparklinePointsPath}
-                fill="none"
-                stroke="#3b82f6"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              {svgSparklinePoints.map((point, index) => {
-                const originalNode = digest.timeline[index];
-                let pointColor = '#3b82f6';
-                if (originalNode.avgSentiment > 0.1) pointColor = '#10b981';
-                if (originalNode.avgSentiment < -0.1) pointColor = '#f43f5e';
-                return (
-                  <circle
-                    key={index}
-                    cx={point.x}
-                    cy={point.y}
-                    r="3.5"
-                    fill="#0A0A0A"
-                    stroke={pointColor}
-                    strokeWidth="1.5"
-                    className="transition-transform hover:scale-150 cursor-pointer"
-                    onClick={() => onSelectDate && onSelectDate(originalNode.dateStr)}
-                    onMouseEnter={() => {
-                      setHoveredNode({
-                        x: point.x,
-                        y: point.y,
-                        dateStr: originalNode.dateStr,
-                        avgSentiment: originalNode.avgSentiment,
-                        messageCount: originalNode.messageCount,
-                        topSender: originalNode.topSender,
-                      });
-                    }}
-                    onMouseLeave={() => setHoveredNode(null)}
-                  />
-                );
-              })}
-            </svg>
-            {hoveredNode && (
-              <div
-                className="absolute z-20 bg-[#161616]/95 backdrop-blur-md border border-white/10 p-2.5 rounded-lg shadow-xl text-left pointer-events-none -translate-x-1/2 -translate-y-full text-[10px] space-y-0.5 w-36"
-                style={{
-                  left: `${(hoveredNode.x / 500) * 100}%`,
-                  top: `calc(${(hoveredNode.y / 120) * 100}% - 12px)`,
-                }}
-              >
-                <div className="font-semibold text-white border-b border-white/5 pb-1 mb-1 flex justify-between items-center">
-                  <span>{hoveredNode.dateStr}</span>
-                  <span className={`w-1.5 h-1.5 rounded-full ${hoveredNode.avgSentiment > 0.1 ? 'bg-emerald-500 animate-pulse' : hoveredNode.avgSentiment < -0.1 ? 'bg-rose-500' : 'bg-gray-500'}`} />
-                </div>
-                <div className="text-gray-400">
-                  Messages: <span className="font-medium text-gray-250">{hoveredNode.messageCount}</span>
-                </div>
-                <div className="text-gray-400">
-                  Sentiment:{' '}
-                  <span className={`font-medium ${hoveredNode.avgSentiment > 0.1 ? 'text-emerald-400' : hoveredNode.avgSentiment < -0.1 ? 'text-rose-400' : 'text-gray-400'}`}>
-                    {hoveredNode.avgSentiment > 0.1 ? 'Positive' : hoveredNode.avgSentiment < -0.1 ? 'Constructive' : 'Neutral'}
-                  </span>
-                </div>
-                <div className="text-gray-400 truncate">
-                  Top Speaker: <span className="font-medium text-blue-450 font-semibold">{hoveredNode.topSender}</span>
-                </div>
-              </div>
-            )}
-            <div className="flex justify-between items-center mt-2 pt-1 border-t border-[#222] text-[9px] text-gray-500 font-mono">
-              <span>Start ({digest.startDateStr.split(',')[0]})</span>
-              <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" /> Positive
-                <span className="w-1.5 h-1.5 bg-rose-500 rounded-full ml-1" /> Negative
-              </span>
-              <span>End ({digest.endDateStr.split(',')[0]})</span>
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Timeline node list */}
       <div className="flex-1 overflow-y-auto space-y-2.5 pr-1" id="timeline-chronological-list">
         {digest.timeline.map((node) => {
-          const sentimentPercentage = node.avgSentiment;
-          let sentimentText = 'Fine / Equal';
-          let sentimentColorClass = 'text-gray-400 bg-white/5 border-white/10';
-          let SentimentIcon = Meh;
-
-          if (sentimentPercentage > 0.12) {
-            sentimentText = 'Positive';
-            sentimentColorClass = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
-            SentimentIcon = Smile;
-          } else if (sentimentPercentage < -0.12) {
-            sentimentText = 'Constructive';
-            sentimentColorClass = 'text-rose-400 bg-rose-500/10 border-rose-500/20';
-            SentimentIcon = Frown;
-          }
-
           return (
             <div
               key={node.dateStr}
               onClick={() => onSelectDate && onSelectDate(node.dateStr)}
               className="p-3 bg-white/3 rounded-lg border border-white/5 relative hover:border-white/10 transition-colors cursor-pointer hover:bg-white/5 active:scale-98"
             >
-              <div
-                className={`absolute top-0 bottom-0 left-0 w-1 rounded-l-md ${
-                  sentimentPercentage > 0.12
-                    ? 'bg-emerald-500/70'
-                    : sentimentPercentage < -0.12
-                    ? 'bg-rose-500/70'
-                    : 'bg-gray-600/70'
-                }`}
-              />
+              <div className="absolute top-0 bottom-0 left-0 w-1 rounded-l-md bg-blue-500/70" />
               <div className="flex justify-between items-start pl-2 mb-2">
                 <div>
                   <h4 className="text-xs font-semibold text-gray-200">{node.dateStr}</h4>
@@ -225,10 +65,6 @@ export default function TimelineColumn({
                     Peak speaker:{' '}
                     <span className="font-semibold text-blue-400">{node.topSender}</span>
                   </p>
-                </div>
-                <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded border text-[9px] ${sentimentColorClass}`}>
-                  <SentimentIcon className="w-2.5 h-2.5" />
-                  {sentimentText}
                 </div>
               </div>
               <div className="space-y-1 pl-2">

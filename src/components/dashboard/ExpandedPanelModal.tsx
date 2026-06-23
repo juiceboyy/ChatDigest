@@ -47,7 +47,7 @@ export default function ExpandedPanelModal({
                   <h3 className="text-sm font-bold uppercase tracking-wider text-white">
                     {getTranslation('tabTimeline', language)} - {language === 'nl' ? 'Gedetailleerde Analyse' : 'In-depth Analysis'}
                   </h3>
-                  <p className="text-[10px] text-gray-500 font-mono uppercase tracking-wider">Chronological Sentiment & Volume Waves</p>
+                  <p className="text-[10px] text-gray-500 font-mono uppercase tracking-wider">Chronological Volume Waves</p>
                 </div>
               </>
             )}
