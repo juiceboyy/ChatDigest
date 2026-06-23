@@ -1,6 +1,15 @@
-import React from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ChatDigestData } from '../../types';
 import { Language } from '../../lib/translations';
+import TimelineRangeSlider from './TimelineRangeSlider';
+import PeriodAnalysisPanel from './PeriodAnalysisPanel';
+
+interface PeriodAnalysisResult {
+  summary: string;
+  trends: string | null;
+  decisions: string[];
+  actionItems: string[];
+}
 
 interface ExpandedTimelineViewProps {
   digest: ChatDigestData;
@@ -10,12 +19,117 @@ interface ExpandedTimelineViewProps {
 
 export default function ExpandedTimelineView({ digest, language, onSelectDate }: ExpandedTimelineViewProps) {
   const totalMessages = digest.messages.length;
+  const timelineLength = digest.timeline.length;
+
+  const [startIndex, setStartIndex] = useState(0);
+  const [endIndex, setEndIndex] = useState(Math.max(0, timelineLength - 1));
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [customAnalyses, setCustomAnalyses] = useState<Record<string, PeriodAnalysisResult>>({});
+
+  // Reset indices if digest changes
+  useEffect(() => {
+    setStartIndex(0);
+    setEndIndex(Math.max(0, digest.timeline.length - 1));
+  }, [digest]);
+
+  // Adjust handles
+  const handleStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseInt(e.target.value);
+    if (!isNaN(val)) {
+      setStartIndex(Math.min(val, endIndex - 1 >= 0 ? endIndex - 1 : 0));
+    }
+  };
+
+  const handleEndChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseInt(e.target.value);
+    if (!isNaN(val)) {
+      setEndIndex(Math.max(val, startIndex + 1 < timelineLength ? startIndex + 1 : timelineLength - 1));
+    }
+  };
+
+  const startDateStr = digest.timeline[startIndex]?.dateStr || '';
+  const endDateStr = digest.timeline[endIndex]?.dateStr || '';
+  const cacheKey = `${startDateStr}_${endDateStr}`;
+  const customAnalysis = customAnalyses[cacheKey] || null;
+  const dayCount = endIndex - startIndex + 1;
+  const includeTrends = dayCount > 7;
+
+  const filteredTimeline = useMemo(() => {
+    if (timelineLength === 0) return [];
+    return digest.timeline.slice(startIndex, endIndex + 1);
+  }, [digest.timeline, startIndex, endIndex, timelineLength]);
+
+  const handlePeriodAnalysis = async () => {
+    if (customAnalysis || loading || timelineLength <= 1) return;
+
+    setLoading(true);
+    setError(null);
+
+    const selectedDatesSet = new Set(filteredTimeline.map(n => n.dateStr));
+    const selectedMessages = digest.messages.filter(msg => selectedDatesSet.has(msg.dateStr));
+
+    try {
+      const response = await fetch('/api/period-analysis', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: selectedMessages,
+          includeTrends,
+          language,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch period analysis.');
+      }
+
+      const data: PeriodAnalysisResult = await response.json();
+      setCustomAnalyses(prev => ({
+        ...prev,
+        [cacheKey]: data,
+      }));
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Error occurred while generating period summary.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-left">
+      {/* Range Slider UI Component */}
+      <TimelineRangeSlider
+        timelineLength={timelineLength}
+        startIndex={startIndex}
+        endIndex={endIndex}
+        startDateStr={startDateStr}
+        endDateStr={endDateStr}
+        dayCount={dayCount}
+        language={language}
+        includeTrends={includeTrends}
+        loading={loading}
+        hasAnalysis={!!customAnalysis}
+        onStartChange={handleStartChange}
+        onEndChange={handleEndChange}
+        onAnalyze={handlePeriodAnalysis}
+      />
+
+      {/* AI Overview result rendering panel */}
+      <PeriodAnalysisPanel
+        loading={loading}
+        error={error}
+        analysis={customAnalysis}
+        language={language}
+      />
+
       {/* Grid of days detailed info */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {digest.timeline.map((node) => {
+        {filteredTimeline.map((node) => {
           return (
             <div
               key={node.dateStr}
