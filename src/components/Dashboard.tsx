@@ -81,28 +81,24 @@ export default function Dashboard({
     onSaveDigest(mergedDigest);
   };
 
-  // ── Filter state ─────────────────────────────────────────────────────────────
   const [searchTerm, setSearchTerm] = useState('');
   const [filterParticipant, setFilterParticipant] = useState<string | null>(null);
-
   const [selectedDetail, setSelectedDetail] = useState<any | null>(null);
-
-  // ── Expanded panel modal state ────────────────────────────────────────────────
+  const [selectedDateMessages, setSelectedDateMessages] = useState<string | null>(null);
   const [expandedPanel, setExpandedPanel] = useState<'timeline' | 'decisions' | 'actionItems' | null>(null);
 
-  // ── Custom Hooks State ────────────────────────────────────────────────────────
   const { dashboard, media, chat } = useDashboardState({
     digest: filteredDigest,
     onSaveDigest: handleSaveDigestFiltered,
     language,
   });
 
-  // Escape key to close detail modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setSelectedDetail(null);
         setExpandedPanel(null);
+        setSelectedDateMessages(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -180,6 +176,7 @@ export default function Dashboard({
           digest={filteredDigest}
           language={language}
           onExpand={() => setExpandedPanel('timeline')}
+          onSelectDate={setSelectedDateMessages}
         />
         <DecisionsColumn
           digest={filteredDigest}
@@ -260,6 +257,8 @@ export default function Dashboard({
         filteredDigest={filteredDigest}
         selectedDetail={selectedDetail}
         setSelectedDetail={setSelectedDetail}
+        selectedDateMessages={selectedDateMessages}
+        setSelectedDateMessages={setSelectedDateMessages}
         isUpdateModalOpen={dashboard.isUpdateModalOpen}
         setIsUpdateModalOpen={dashboard.setIsUpdateModalOpen}
         committingDecision={chat.committingDecision}
@@ -287,6 +286,7 @@ export default function Dashboard({
         onUpdateActionItem={onUpdateActionItem}
         onSelectDetail={setSelectedDetail}
         language={language}
+        onSelectDate={setSelectedDateMessages}
       />
     </div>
   );

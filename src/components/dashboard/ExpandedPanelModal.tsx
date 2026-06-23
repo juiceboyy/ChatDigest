@@ -14,6 +14,7 @@ interface ExpandedPanelModalProps {
   onUpdateActionItem: (id: string, completed: boolean) => void;
   onSelectDetail: (detail: any) => void;
   language: Language;
+  onSelectDate?: (dateStr: string) => void;
 }
 
 export default function ExpandedPanelModal({
@@ -24,6 +25,7 @@ export default function ExpandedPanelModal({
   onUpdateActionItem,
   onSelectDetail,
   language,
+  onSelectDate,
 }: ExpandedPanelModalProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [assigneeFilter, setAssigneeFilter] = useState('all');
@@ -86,7 +88,7 @@ export default function ExpandedPanelModal({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
-          {panelType === 'timeline' && <ExpandedTimelineView digest={digest} language={language} />}
+          {panelType === 'timeline' && <ExpandedTimelineView digest={digest} language={language} onSelectDate={onSelectDate} />}
           {panelType === 'decisions' && (
             <ExpandedDecisionsView
               digest={digest}

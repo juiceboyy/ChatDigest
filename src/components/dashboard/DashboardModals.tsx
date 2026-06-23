@@ -4,6 +4,7 @@ import { Language } from '../../lib/translations';
 import ItemDetailModal from './ItemDetailModal';
 import CommitDecisionModal from './CommitDecisionModal';
 import UpdateChatModal from './UpdateChatModal';
+import DayMessagesModal from './DayMessagesModal';
 
 interface DashboardModalsProps {
   digest: ChatDigestData;
@@ -19,6 +20,8 @@ interface DashboardModalsProps {
     completedMessage?: string;
   } | null;
   setSelectedDetail: React.Dispatch<React.SetStateAction<any>>;
+  selectedDateMessages: string | null;
+  setSelectedDateMessages: (dateStr: string | null) => void;
   isUpdateModalOpen: boolean;
   setIsUpdateModalOpen: (open: boolean) => void;
   committingDecision: any;
@@ -43,6 +46,8 @@ export default function DashboardModals({
   filteredDigest,
   selectedDetail,
   setSelectedDetail,
+  selectedDateMessages,
+  setSelectedDateMessages,
   isUpdateModalOpen,
   setIsUpdateModalOpen,
   committingDecision,
@@ -107,6 +112,14 @@ export default function DashboardModals({
         onClose={() => setIsUpdateModalOpen(false)}
         digest={digest}
         onSaveDigest={onSaveDigest || (() => {})}
+        language={language}
+      />
+
+      <DayMessagesModal
+        dateStr={selectedDateMessages}
+        messages={filteredDigest.messages}
+        firstParticipant={filteredDigest.participants[0] || ''}
+        onClose={() => setSelectedDateMessages(null)}
         language={language}
       />
     </>

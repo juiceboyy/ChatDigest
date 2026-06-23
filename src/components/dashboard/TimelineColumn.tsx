@@ -7,12 +7,14 @@ interface TimelineColumnProps {
   digest: ChatDigestData;
   language: Language;
   onExpand?: () => void;
+  onSelectDate?: (dateStr: string) => void;
 }
 
 export default function TimelineColumn({
   digest,
   language,
   onExpand,
+  onSelectDate,
 }: TimelineColumnProps) {
   const totalMessages = digest.messages.length;
   const [hoveredNode, setHoveredNode] = useState<{
@@ -129,6 +131,7 @@ export default function TimelineColumn({
                     stroke={pointColor}
                     strokeWidth="1.5"
                     className="transition-transform hover:scale-150 cursor-pointer"
+                    onClick={() => onSelectDate && onSelectDate(originalNode.dateStr)}
                     onMouseEnter={() => {
                       setHoveredNode({
                         x: point.x,
@@ -203,7 +206,8 @@ export default function TimelineColumn({
           return (
             <div
               key={node.dateStr}
-              className="p-3 bg-white/3 rounded-lg border border-white/5 relative hover:border-white/10 transition-colors"
+              onClick={() => onSelectDate && onSelectDate(node.dateStr)}
+              className="p-3 bg-white/3 rounded-lg border border-white/5 relative hover:border-white/10 transition-colors cursor-pointer hover:bg-white/5 active:scale-98"
             >
               <div
                 className={`absolute top-0 bottom-0 left-0 w-1 rounded-l-md ${

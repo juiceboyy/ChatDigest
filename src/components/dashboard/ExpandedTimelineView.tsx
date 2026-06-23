@@ -6,9 +6,10 @@ import { Language } from '../../lib/translations';
 interface ExpandedTimelineViewProps {
   digest: ChatDigestData;
   language: Language;
+  onSelectDate?: (dateStr: string) => void;
 }
 
-export default function ExpandedTimelineView({ digest, language }: ExpandedTimelineViewProps) {
+export default function ExpandedTimelineView({ digest, language, onSelectDate }: ExpandedTimelineViewProps) {
   const totalMessages = digest.messages.length;
   const [hoveredNode, setHoveredNode] = useState<{
     x: number;
@@ -88,6 +89,7 @@ export default function ExpandedTimelineView({ digest, language }: ExpandedTimel
                     stroke={pointColor}
                     strokeWidth="2.5"
                     className="transition-transform hover:scale-150 cursor-pointer"
+                    onClick={() => onSelectDate && onSelectDate(originalNode.dateStr)}
                     onMouseEnter={() => {
                       setHoveredNode({
                         x: point.x,
@@ -159,7 +161,11 @@ export default function ExpandedTimelineView({ digest, language }: ExpandedTimel
           }
 
           return (
-            <div key={node.dateStr} className="p-4.5 bg-[#0D0D0D] border border-white/5 rounded-xl flex flex-col justify-between animate-fadeIn">
+            <div
+              key={node.dateStr}
+              onClick={() => onSelectDate && onSelectDate(node.dateStr)}
+              className="p-4.5 bg-[#0D0D0D] border border-white/5 rounded-xl flex flex-col justify-between animate-fadeIn cursor-pointer hover:bg-white/5 active:scale-98 transition-all hover:border-white/10"
+            >
               <div className="flex justify-between items-start mb-3">
                 <div>
                   <h5 className="text-xs font-bold text-white">{node.dateStr}</h5>
