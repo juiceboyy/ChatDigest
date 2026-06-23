@@ -15,6 +15,8 @@ interface ExpandedPanelModalProps {
   onSelectDetail: (detail: any) => void;
   language: Language;
   onSelectDate?: (dateStr: string) => void;
+  periodAnalyses?: Record<string, any>;
+  setPeriodAnalyses?: React.Dispatch<React.SetStateAction<Record<string, any>>>;
 }
 
 export default function ExpandedPanelModal({
@@ -26,6 +28,8 @@ export default function ExpandedPanelModal({
   onSelectDetail,
   language,
   onSelectDate,
+  periodAnalyses,
+  setPeriodAnalyses,
 }: ExpandedPanelModalProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [assigneeFilter, setAssigneeFilter] = useState('all');
@@ -88,7 +92,15 @@ export default function ExpandedPanelModal({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
-          {panelType === 'timeline' && <ExpandedTimelineView digest={digest} language={language} onSelectDate={onSelectDate} />}
+          {panelType === 'timeline' && (
+            <ExpandedTimelineView 
+              digest={digest} 
+              language={language} 
+              onSelectDate={onSelectDate} 
+              periodAnalyses={periodAnalyses}
+              setPeriodAnalyses={setPeriodAnalyses}
+            />
+          )}
           {panelType === 'decisions' && (
             <ExpandedDecisionsView
               digest={digest}

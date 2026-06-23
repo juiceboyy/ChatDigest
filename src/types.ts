@@ -78,6 +78,8 @@ export interface ChatDigestData {
     decisions: ChatDecision[];
     actionItems: ActionItem[];
   }>;
+  dayAnalyses?: Record<string, any>;
+  periodAnalyses?: Record<string, any>;
 }
 
 export interface PlaybookPlay {

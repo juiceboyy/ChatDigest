@@ -15,9 +15,17 @@ interface ExpandedTimelineViewProps {
   digest: ChatDigestData;
   language: Language;
   onSelectDate?: (dateStr: string) => void;
+  periodAnalyses?: Record<string, PeriodAnalysisResult>;
+  setPeriodAnalyses?: React.Dispatch<React.SetStateAction<Record<string, PeriodAnalysisResult>>>;
 }
 
-export default function ExpandedTimelineView({ digest, language, onSelectDate }: ExpandedTimelineViewProps) {
+export default function ExpandedTimelineView({
+  digest,
+  language,
+  onSelectDate,
+  periodAnalyses = {},
+  setPeriodAnalyses,
+}: ExpandedTimelineViewProps) {
   const totalMessages = digest.messages.length;
   const timelineLength = digest.timeline.length;
 
@@ -26,7 +34,7 @@ export default function ExpandedTimelineView({ digest, language, onSelectDate }:
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [customAnalyses, setCustomAnalyses] = useState<Record<string, PeriodAnalysisResult>>({});
+  const customAnalyses = periodAnalyses;
 
   // Reset indices if digest changes
   useEffect(() => {
@@ -88,7 +96,7 @@ export default function ExpandedTimelineView({ digest, language, onSelectDate }:
       }
 
       const data: PeriodAnalysisResult = await response.json();
-      setCustomAnalyses(prev => ({
+      setPeriodAnalyses?.(prev => ({
         ...prev,
         [cacheKey]: data,
       }));

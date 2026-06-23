@@ -52,13 +52,8 @@ export default function Dashboard({
   // Wrapper to merge filtered saves back to full digest
   const handleSaveDigestFiltered = (updatedFilteredDigest: ChatDigestData) => {
     if (!onSaveDigest) return;
-
-    const filterKey = dateFilterType === 'custom'
-      ? `custom_${customStartDate}_${customEndDate}`
-      : dateFilterType;
-
+    const filterKey = dateFilterType === 'custom' ? `custom_${customStartDate}_${customEndDate}` : dateFilterType;
     const periodSummaries = { ...(digest.periodSummaries || {}) };
-
     if (dateFilterType !== 'all') {
       periodSummaries[filterKey] = {
         summary: updatedFilteredDigest.summary,
@@ -67,8 +62,7 @@ export default function Dashboard({
         actionItems: updatedFilteredDigest.actionItems,
       };
     }
-
-    const mergedDigest: ChatDigestData = {
+    onSaveDigest({
       ...digest,
       summary: dateFilterType === 'all' ? updatedFilteredDigest.summary : digest.summary,
       keywords: dateFilterType === 'all' ? updatedFilteredDigest.keywords : digest.keywords,
@@ -77,8 +71,7 @@ export default function Dashboard({
       playbook: updatedFilteredDigest.playbook,
       executiveSummary: updatedFilteredDigest.executiveSummary,
       periodSummaries,
-    };
-    onSaveDigest(mergedDigest);
+    });
   };
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -86,7 +79,21 @@ export default function Dashboard({
   const [selectedDetail, setSelectedDetail] = useState<any | null>(null);
   const [selectedDateMessages, setSelectedDateMessages] = useState<string | null>(null);
   const [expandedPanel, setExpandedPanel] = useState<'timeline' | 'decisions' | 'actionItems' | null>(null);
-  const [dayAnalyses, setDayAnalyses] = useState<Record<string, any>>({});
+  const [dayAnalyses, setDayAnalyses] = useState<Record<string, any>>(digest.dayAnalyses || {});
+  const [periodAnalyses, setPeriodAnalyses] = useState<Record<string, any>>(digest.periodAnalyses || {});
+
+  useEffect(() => {
+    setDayAnalyses(digest.dayAnalyses || {});
+    setPeriodAnalyses(digest.periodAnalyses || {});
+  }, [digest]);
+
+  useEffect(() => {
+    const hasDayChanges = JSON.stringify(dayAnalyses) !== JSON.stringify(digest.dayAnalyses || {});
+    const hasPeriodChanges = JSON.stringify(periodAnalyses) !== JSON.stringify(digest.periodAnalyses || {});
+    if (hasDayChanges || hasPeriodChanges) {
+      onSaveDigest?.({ ...digest, dayAnalyses, periodAnalyses });
+    }
+  }, [dayAnalyses, periodAnalyses, digest, onSaveDigest]);
 
   const { dashboard, media, chat } = useDashboardState({
     digest: filteredDigest,
@@ -106,11 +113,9 @@ export default function Dashboard({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Scroll to top when modals open
   useEffect(() => {
     if (selectedDetail || dashboard.isUpdateModalOpen) {
-      const scroller = document.getElementById('main-scroller');
-      if (scroller) scroller.scrollTo({ top: 0, behavior: 'smooth' });
+      document.getElementById('main-scroller')?.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [selectedDetail, dashboard.isUpdateModalOpen]);
 
@@ -290,6 +295,8 @@ export default function Dashboard({
         onSelectDetail={setSelectedDetail}
         language={language}
         onSelectDate={setSelectedDateMessages}
+        periodAnalyses={periodAnalyses}
+        setPeriodAnalyses={setPeriodAnalyses}
       />
     </div>
   );
