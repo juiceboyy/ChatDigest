@@ -25,6 +25,10 @@ This guide outlines the commands, architecture, and coding guidelines for the Ch
     *   [execSummary.ts](file:///Volumes/T7%20Shield/Vibe%20Coding/ChatDigest/src/server/routes/execSummary.ts): POST `/api/executive-summary`
     *   [playbook.ts](file:///Volumes/T7%20Shield/Vibe%20Coding/ChatDigest/src/server/routes/playbook.ts): POST `/api/playbook`
     *   [translate.ts](file:///Volumes/T7%20Shield/Vibe%20Coding/ChatDigest/src/server/routes/translate.ts): POST `/api/translate`
+    *   [dayAnalysis.ts](file:///Volumes/T7%20Shield/Vibe%20Coding/ChatDigest/src/server/routes/dayAnalysis.ts): POST `/api/day-analysis`
+    *   [periodAnalysis.ts](file:///Volumes/T7%20Shield/Vibe%20Coding/ChatDigest/src/server/routes/periodAnalysis.ts): POST `/api/period-analysis`
+    *   [metaAnalysis.ts](file:///Volumes/T7%20Shield/Vibe%20Coding/ChatDigest/src/server/routes/metaAnalysis.ts): POST `/api/meta-analysis`
+    *   [digestMedia.ts](file:///Volumes/T7%20Shield/Vibe%20Coding/ChatDigest/src/server/routes/digestMedia.ts): Media attachments routes
 *   **Data Persistence & Firebase**:
     *   [src/db.ts](file:///Volumes/T7%20Shield/Vibe%20Coding/ChatDigest/src/db.ts): Manages client-side offline IndexedDB storage.
     *   [src/firebase.ts](file:///Volumes/T7%20Shield/Vibe%20Coding/ChatDigest/src/firebase.ts): Re-export shim for backward compatibility.
@@ -34,6 +38,7 @@ This guide outlines the commands, architecture, and coding guidelines for the Ch
         *   [firestoreDigests.ts](file:///Volumes/T7%20Shield/Vibe%20Coding/ChatDigest/src/firebase/firestoreDigests.ts): CRUD operations against Firestore (`users/{uid}/digests/{digestId}`).
 *   **State Hooks**:
     *   [src/hooks/useDigestStorage.ts](file:///Volumes/T7%20Shield/Vibe%20Coding/ChatDigest/src/hooks/useDigestStorage.ts): Handles digest CRUD operations, auth subscriptions, active digest selection, and local/firestore sync logic.
+    *   [src/hooks/useDigestAnalyses.ts](file:///Volumes/T7%20Shield/Vibe%20Coding/ChatDigest/src/hooks/useDigestAnalyses.ts): Handles local day, period, and overall meta-analyses caching and saving.
 *   **Frontend UI & Components**:
     *   [src/components/Dashboard.tsx](file:///Volumes/T7%20Shield/Vibe%20Coding/ChatDigest/src/components/Dashboard.tsx): Main dashboard orchestrator (manages UI state and action handlers).
     *   `src/components/dashboard/`: Contains specialized sub-components (e.g. `TimelineColumn.tsx`, `PlaybookSection.tsx`, `ChatAssistant.tsx`, etc.).
