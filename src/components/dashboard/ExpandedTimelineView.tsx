@@ -36,11 +36,11 @@ export default function ExpandedTimelineView({
   const [error, setError] = useState<string | null>(null);
   const customAnalyses = periodAnalyses;
 
-  // Reset indices if digest changes
+  // Reset indices if digest changes (switched to a different chat digest)
   useEffect(() => {
     setStartIndex(0);
     setEndIndex(Math.max(0, digest.timeline.length - 1));
-  }, [digest]);
+  }, [digest.id]);
 
   // Adjust handles
   const handleStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -85,7 +85,7 @@ export default function Dashboard({
   useEffect(() => {
     setDayAnalyses(digest.dayAnalyses || {});
     setPeriodAnalyses(digest.periodAnalyses || {});
-  }, [digest]);
+  }, [digest.id]);
 
   useEffect(() => {
     const hasDayChanges = JSON.stringify(dayAnalyses) !== JSON.stringify(digest.dayAnalyses || {});
