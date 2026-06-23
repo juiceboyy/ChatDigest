@@ -114,20 +114,86 @@ export function fixDateAndTimestamp(dateStr: string, timeStr: string, digestYear
           }
         }
       } else if (parts.length === 3) {
-        if (parseInt(parts[0]) > 1000) {
-          year = parseInt(parts[0]);
-          const mVal = getMonthFromString(parts[1]);
-          month = mVal !== null ? mVal : (parseInt(parts[1]) || 1);
-          day = parseInt(parts[2]) || 1;
+        // Identify which part is the month name (if any)
+        let monthIdx = -1;
+        let monthVal = -1;
+        for (let i = 0; i < parts.length; i++) {
+          const mVal = getMonthFromString(parts[i]);
+          if (mVal !== null) {
+            monthIdx = i;
+            monthVal = mVal;
+            break;
+          }
+        }
+
+        if (monthIdx !== -1) {
+          month = monthVal;
+          if (monthIdx === 0) {
+            // Format: Month DD YYYY
+            day = parseInt(parts[1]) || 1;
+            let parsedYear = parseInt(parts[2]);
+            if (!isNaN(parsedYear)) {
+              if (parsedYear < 100) parsedYear += 2000;
+              year = parsedYear;
+            }
+          } else if (monthIdx === 1) {
+            // Format: DD Month YYYY
+            day = parseInt(parts[0]) || 1;
+            let parsedYear = parseInt(parts[2]);
+            if (!isNaN(parsedYear)) {
+              if (parsedYear < 100) parsedYear += 2000;
+              year = parsedYear;
+            }
+          } else {
+            // Format: YYYY DD Month
+            day = parseInt(parts[1]) || 1;
+            let parsedYear = parseInt(parts[0]);
+            if (!isNaN(parsedYear)) {
+              if (parsedYear < 100) parsedYear += 2000;
+              year = parsedYear;
+            }
+          }
         } else {
-          let parsedYear = parseInt(parts[2]);
-          if (!isNaN(parsedYear)) {
+          // All parts are numeric
+          const p0 = parseInt(parts[0]);
+          const p1 = parseInt(parts[1]);
+          const p2 = parseInt(parts[2]);
+
+          if (p0 > 1000) {
+            // Format: YYYY-MM-DD
+            year = p0;
+            month = p1 || 1;
+            day = p2 || 1;
+          } else if (p2 > 1000 || parts[2].length === 4) {
+            // Format: DD-MM-YYYY or MM-DD-YYYY
+            year = p2;
+            if (p0 > 12) {
+              day = p0;
+              month = p1 || 1;
+            } else if (p1 > 12) {
+              day = p1;
+              month = p0 || 1;
+            } else {
+              // Default to DD-MM-YYYY
+              day = p0;
+              month = p1 || 1;
+            }
+          } else {
+            // Format: DD-MM-YY
+            let parsedYear = p2;
             if (parsedYear < 100) parsedYear += 2000;
             year = parsedYear;
+            if (p0 > 12) {
+              day = p0;
+              month = p1 || 1;
+            } else if (p1 > 12) {
+              day = p1;
+              month = p0 || 1;
+            } else {
+              day = p0;
+              month = p1 || 1;
+            }
           }
-          const mVal = getMonthFromString(parts[1]);
-          month = mVal !== null ? mVal : (parseInt(parts[1]) || 1);
-          day = parseInt(parts[0]) || 1;
         }
       }
     }
