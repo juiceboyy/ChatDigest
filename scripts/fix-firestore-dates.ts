@@ -1,5 +1,5 @@
 import { initializeApp, cert, applicationDefault } from 'firebase-admin/app';
-import { Firestore } from 'firebase-admin/firestore';
+import { getFirestore } from 'firebase-admin/firestore';
 import * as path from 'path';
 import * as fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -40,10 +40,7 @@ if (serviceAccountPath) {
   });
 }
 
-const db = new Firestore({
-  projectId: projectId,
-  databaseId: databaseId || '(default)'
-});
+const db = databaseId ? getFirestore(databaseId) : getFirestore();
 
 async function runMigration() {
   console.log(`Connecting to Firestore database: "${databaseId || '(default)'}" in project: "${projectId}"`);
