@@ -39,7 +39,7 @@ export default function ActionItemsColumn({
   }, [actionItems, searchTerm, filterParticipant, filterOnlyIncompleteActionItems]);
   return (
     <div
-      className="lg:col-span-4 bg-[#121212] rounded-xl border border-white/5 p-5 flex flex-col h-[540px] hover:border-white/10 transition-colors"
+      className="lg:col-span-6 bg-[#121212] rounded-xl border border-white/5 p-5 flex flex-col h-[540px] hover:border-white/10 transition-colors"
       id="column-action-items"
     >
       <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3 shrink-0">

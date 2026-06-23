@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { Clock } from 'lucide-react';
 import { ChatDigestData } from '../types';
 import { exportPlaybookToPdf } from '../lib/pdfExporter';
-import { Language } from '../lib/translations';
+import { Language, getTranslation } from '../lib/translations';
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 import DashboardHeader from './dashboard/DashboardHeader';
 import ExecSummaryCard from './dashboard/ExecSummaryCard';
 import SummaryPanel from './dashboard/SummaryPanel';
-import TimelineColumn from './dashboard/TimelineColumn';
+import ExpandedTimelineView from './dashboard/ExpandedTimelineView';
 import DecisionsColumn from './dashboard/DecisionsColumn';
 import ActionItemsColumn from './dashboard/ActionItemsColumn';
 import PlaybookSection from './dashboard/PlaybookSection';
@@ -173,14 +174,40 @@ export default function Dashboard({
         language={language}
       />
 
-      {/* Three-column grid: Timeline | Decisions | Action Items */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5" id="core-metrics-grid">
-        <TimelineColumn
+      {/* Discussie Tijdlijn - Gedetailleerde Analyse */}
+      <div 
+        className="bg-[#121212] rounded-xl border border-blue-500/20 p-5 shadow-[0_0_30px_rgba(59,130,246,0.08)] space-y-6" 
+        id="timeline-detailed-analysis-section"
+      >
+        <div className="flex items-center justify-between border-b border-white/5 pb-4 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-950/40 rounded-lg text-blue-400 border border-blue-900/40 animate-pulse">
+              <Clock className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-white">
+                {getTranslation('tabTimeline', language)} - {language === 'nl' ? 'Gedetailleerde Analyse' : 'In-depth Analysis'}
+              </h3>
+              <p className="text-[10px] text-gray-550 font-mono uppercase tracking-wider">Chronological Volume Waves</p>
+            </div>
+          </div>
+          <span className="text-[10px] font-mono px-3 py-1 bg-blue-950/20 text-blue-400 rounded-full border border-blue-900/30">
+            {filteredDigest.timeline.length} peaks
+          </span>
+        </div>
+        <ExpandedTimelineView
           digest={filteredDigest}
           language={language}
-          onExpand={() => setExpandedPanel('timeline')}
           onSelectDate={setSelectedDateMessages}
+          periodAnalyses={periodAnalyses}
+          setPeriodAnalyses={setPeriodAnalyses}
+          metaAnalysis={metaAnalysis}
+          setMetaAnalysis={setMetaAnalysis}
         />
+      </div>
+
+      {/* Two-column grid: Decisions | Action Items */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5" id="core-metrics-grid">
         <DecisionsColumn
           digest={filteredDigest}
           searchTerm={searchTerm}
