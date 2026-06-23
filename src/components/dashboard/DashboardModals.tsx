@@ -22,6 +22,8 @@ interface DashboardModalsProps {
   setSelectedDetail: React.Dispatch<React.SetStateAction<any>>;
   selectedDateMessages: string | null;
   setSelectedDateMessages: (dateStr: string | null) => void;
+  dayAnalyses: Record<string, any>;
+  setDayAnalyses: React.Dispatch<React.SetStateAction<Record<string, any>>>;
   isUpdateModalOpen: boolean;
   setIsUpdateModalOpen: (open: boolean) => void;
   committingDecision: any;
@@ -48,6 +50,8 @@ export default function DashboardModals({
   setSelectedDetail,
   selectedDateMessages,
   setSelectedDateMessages,
+  dayAnalyses,
+  setDayAnalyses,
   isUpdateModalOpen,
   setIsUpdateModalOpen,
   committingDecision,
@@ -121,6 +125,8 @@ export default function DashboardModals({
         firstParticipant={filteredDigest.participants[0] || ''}
         onClose={() => setSelectedDateMessages(null)}
         language={language}
+        dayAnalyses={dayAnalyses}
+        setDayAnalyses={setDayAnalyses}
       />
     </>
   );

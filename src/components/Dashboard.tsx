@@ -86,6 +86,7 @@ export default function Dashboard({
   const [selectedDetail, setSelectedDetail] = useState<any | null>(null);
   const [selectedDateMessages, setSelectedDateMessages] = useState<string | null>(null);
   const [expandedPanel, setExpandedPanel] = useState<'timeline' | 'decisions' | 'actionItems' | null>(null);
+  const [dayAnalyses, setDayAnalyses] = useState<Record<string, any>>({});
 
   const { dashboard, media, chat } = useDashboardState({
     digest: filteredDigest,
@@ -259,6 +260,8 @@ export default function Dashboard({
         setSelectedDetail={setSelectedDetail}
         selectedDateMessages={selectedDateMessages}
         setSelectedDateMessages={setSelectedDateMessages}
+        dayAnalyses={dayAnalyses}
+        setDayAnalyses={setDayAnalyses}
         isUpdateModalOpen={dashboard.isUpdateModalOpen}
         setIsUpdateModalOpen={dashboard.setIsUpdateModalOpen}
         committingDecision={chat.committingDecision}
