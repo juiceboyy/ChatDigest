@@ -9,3 +9,6 @@ coverage/
 
 # Local Netlify folder
 .netlify
+
+# Service Account credentials (DO NOT COMMIT)
+service-account.json
