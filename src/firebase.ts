@@ -12,9 +12,5 @@
 export { auth, db, googleProvider, OperationType, handleFirestoreError } from './firebase/init';
 export type { FirestoreErrorInfo } from './firebase/init';
 export { subscribeAuth, getCurrentUid, signInWithGoogle, signOutUser } from './firebase/auth';
-export {
-  getFirestoreDigests,
-  saveFirestoreDigest,
-  getFirestoreDigestDetails,
-  deleteFirestoreDigest,
-} from './firebase/firestoreDigests';
+export { getFirestoreDigests, getFirestoreDigestDetails } from './firebase/firestoreDigestsRead';
+export { saveFirestoreDigest, deleteFirestoreDigest } from './firebase/firestoreDigestsWrite';

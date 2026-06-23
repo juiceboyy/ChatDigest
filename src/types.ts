@@ -71,6 +71,7 @@ export interface ChatDigestData {
   zipAttachments?: ZipAttachmentItem[];
   playbook?: PlaybookData;
   isFullyLoaded?: boolean;
+  datesFixed?: boolean;
   title?: string;
   periodSummaries?: Record<string, {
     summary: string;
