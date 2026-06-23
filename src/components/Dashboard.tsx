@@ -22,6 +22,7 @@ import ExpandedPanelModal from './dashboard/ExpandedPanelModal';
 // ── Hooks ──────────────────────────────────────────────────────────────────────
 import { useDashboardState } from './dashboard/useDashboardState';
 import { useDateFilter } from '../hooks/useDateFilter';
+import { useDigestAnalyses } from '../hooks/useDigestAnalyses';
 
 interface DashboardProps {
   digest: ChatDigestData;
@@ -50,26 +51,27 @@ export default function Dashboard({
   } = useDateFilter(digest);
 
   // Wrapper to merge filtered saves back to full digest
-  const handleSaveDigestFiltered = (updatedFilteredDigest: ChatDigestData) => {
+  const handleSaveDigestFiltered = (updated: ChatDigestData) => {
     if (!onSaveDigest) return;
     const filterKey = dateFilterType === 'custom' ? `custom_${customStartDate}_${customEndDate}` : dateFilterType;
     const periodSummaries = { ...(digest.periodSummaries || {}) };
     if (dateFilterType !== 'all') {
       periodSummaries[filterKey] = {
-        summary: updatedFilteredDigest.summary,
-        keywords: updatedFilteredDigest.keywords,
-        decisions: updatedFilteredDigest.decisions,
-        actionItems: updatedFilteredDigest.actionItems,
+        summary: updated.summary,
+        keywords: updated.keywords,
+        decisions: updated.decisions,
+        actionItems: updated.actionItems,
       };
     }
+    const isAll = dateFilterType === 'all';
     onSaveDigest({
       ...digest,
-      summary: dateFilterType === 'all' ? updatedFilteredDigest.summary : digest.summary,
-      keywords: dateFilterType === 'all' ? updatedFilteredDigest.keywords : digest.keywords,
-      decisions: dateFilterType === 'all' ? updatedFilteredDigest.decisions : digest.decisions,
-      actionItems: dateFilterType === 'all' ? updatedFilteredDigest.actionItems : digest.actionItems,
-      playbook: updatedFilteredDigest.playbook,
-      executiveSummary: updatedFilteredDigest.executiveSummary,
+      summary: isAll ? updated.summary : digest.summary,
+      keywords: isAll ? updated.keywords : digest.keywords,
+      decisions: isAll ? updated.decisions : digest.decisions,
+      actionItems: isAll ? updated.actionItems : digest.actionItems,
+      playbook: updated.playbook,
+      executiveSummary: updated.executiveSummary,
       periodSummaries,
     });
   };
@@ -79,21 +81,16 @@ export default function Dashboard({
   const [selectedDetail, setSelectedDetail] = useState<any | null>(null);
   const [selectedDateMessages, setSelectedDateMessages] = useState<string | null>(null);
   const [expandedPanel, setExpandedPanel] = useState<'timeline' | 'decisions' | 'actionItems' | null>(null);
-  const [dayAnalyses, setDayAnalyses] = useState<Record<string, any>>(digest.dayAnalyses || {});
-  const [periodAnalyses, setPeriodAnalyses] = useState<Record<string, any>>(digest.periodAnalyses || {});
 
-  useEffect(() => {
-    setDayAnalyses(digest.dayAnalyses || {});
-    setPeriodAnalyses(digest.periodAnalyses || {});
-  }, [digest.id]);
+  const {
+    dayAnalyses,
+    setDayAnalyses,
+    periodAnalyses,
+    setPeriodAnalyses,
+    metaAnalysis,
+    setMetaAnalysis,
+  } = useDigestAnalyses(digest, onSaveDigest);
 
-  useEffect(() => {
-    const hasDayChanges = JSON.stringify(dayAnalyses) !== JSON.stringify(digest.dayAnalyses || {});
-    const hasPeriodChanges = JSON.stringify(periodAnalyses) !== JSON.stringify(digest.periodAnalyses || {});
-    if (hasDayChanges || hasPeriodChanges) {
-      onSaveDigest?.({ ...digest, dayAnalyses, periodAnalyses });
-    }
-  }, [dayAnalyses, periodAnalyses, digest, onSaveDigest]);
 
   const { dashboard, media, chat } = useDashboardState({
     digest: filteredDigest,
@@ -102,15 +99,15 @@ export default function Dashboard({
   });
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setSelectedDetail(null);
         setExpandedPanel(null);
         setSelectedDateMessages(null);
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
   }, []);
 
   useEffect(() => {
@@ -287,16 +284,11 @@ export default function Dashboard({
       />
 
       <ExpandedPanelModal
-        isOpen={expandedPanel !== null}
-        onClose={() => setExpandedPanel(null)}
-        panelType={expandedPanel}
-        digest={filteredDigest}
-        onUpdateActionItem={onUpdateActionItem}
-        onSelectDetail={setSelectedDetail}
-        language={language}
-        onSelectDate={setSelectedDateMessages}
-        periodAnalyses={periodAnalyses}
-        setPeriodAnalyses={setPeriodAnalyses}
+        isOpen={expandedPanel !== null} onClose={() => setExpandedPanel(null)} panelType={expandedPanel}
+        digest={filteredDigest} onUpdateActionItem={onUpdateActionItem} onSelectDetail={setSelectedDetail}
+        language={language} onSelectDate={setSelectedDateMessages}
+        periodAnalyses={periodAnalyses} setPeriodAnalyses={setPeriodAnalyses}
+        metaAnalysis={metaAnalysis} setMetaAnalysis={setMetaAnalysis}
       />
     </div>
   );

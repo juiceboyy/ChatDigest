@@ -17,6 +17,8 @@ interface ExpandedPanelModalProps {
   onSelectDate?: (dateStr: string) => void;
   periodAnalyses?: Record<string, any>;
   setPeriodAnalyses?: React.Dispatch<React.SetStateAction<Record<string, any>>>;
+  metaAnalysis?: any;
+  setMetaAnalysis?: React.Dispatch<React.SetStateAction<any>>;
 }
 
 export default function ExpandedPanelModal({
@@ -30,6 +32,8 @@ export default function ExpandedPanelModal({
   onSelectDate,
   periodAnalyses,
   setPeriodAnalyses,
+  metaAnalysis,
+  setMetaAnalysis,
 }: ExpandedPanelModalProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [assigneeFilter, setAssigneeFilter] = useState('all');
@@ -99,6 +103,8 @@ export default function ExpandedPanelModal({
               onSelectDate={onSelectDate} 
               periodAnalyses={periodAnalyses}
               setPeriodAnalyses={setPeriodAnalyses}
+              metaAnalysis={metaAnalysis}
+              setMetaAnalysis={setMetaAnalysis}
             />
           )}
           {panelType === 'decisions' && (

@@ -80,6 +80,7 @@ export interface ChatDigestData {
   }>;
   dayAnalyses?: Record<string, any>;
   periodAnalyses?: Record<string, any>;
+  metaAnalysis?: any;
 }
 
 export interface PlaybookPlay {

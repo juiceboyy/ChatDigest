@@ -3,6 +3,7 @@ import { ChatDigestData } from '../../types';
 import { Language } from '../../lib/translations';
 import TimelineRangeSlider from './TimelineRangeSlider';
 import PeriodAnalysisPanel from './PeriodAnalysisPanel';
+import MetaAnalysisSection from './MetaAnalysisSection';
 
 interface PeriodAnalysisResult {
   summary: string;
@@ -17,6 +18,8 @@ interface ExpandedTimelineViewProps {
   onSelectDate?: (dateStr: string) => void;
   periodAnalyses?: Record<string, PeriodAnalysisResult>;
   setPeriodAnalyses?: React.Dispatch<React.SetStateAction<Record<string, PeriodAnalysisResult>>>;
+  metaAnalysis?: any;
+  setMetaAnalysis?: React.Dispatch<React.SetStateAction<any>>;
 }
 
 export default function ExpandedTimelineView({
@@ -25,6 +28,8 @@ export default function ExpandedTimelineView({
   onSelectDate,
   periodAnalyses = {},
   setPeriodAnalyses,
+  metaAnalysis,
+  setMetaAnalysis,
 }: ExpandedTimelineViewProps) {
   const totalMessages = digest.messages.length;
   const timelineLength = digest.timeline.length;
@@ -34,7 +39,6 @@ export default function ExpandedTimelineView({
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const customAnalyses = periodAnalyses;
 
   // Reset indices if digest changes (switched to a different chat digest)
   useEffect(() => {
@@ -60,7 +64,7 @@ export default function ExpandedTimelineView({
   const startDateStr = digest.timeline[startIndex]?.dateStr || '';
   const endDateStr = digest.timeline[endIndex]?.dateStr || '';
   const cacheKey = `${startDateStr}_${endDateStr}`;
-  const customAnalysis = customAnalyses[cacheKey] || null;
+  const customAnalysis = periodAnalyses[cacheKey] || null;
   const dayCount = endIndex - startIndex + 1;
   const includeTrends = dayCount > 7;
 
@@ -110,6 +114,14 @@ export default function ExpandedTimelineView({
 
   return (
     <div className="space-y-6 text-left">
+      {/* Overall Meta-Analysis Section */}
+      <MetaAnalysisSection
+        digest={digest}
+        language={language}
+        metaAnalysis={metaAnalysis}
+        setMetaAnalysis={setMetaAnalysis}
+      />
+
       {/* Range Slider UI Component */}
       <TimelineRangeSlider
         timelineLength={timelineLength}

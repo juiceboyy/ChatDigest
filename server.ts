@@ -11,6 +11,7 @@ import translateRouter from "./src/server/routes/translate";
 import digestMediaRouter from "./src/server/routes/digestMedia";
 import dayAnalysisRouter from "./src/server/routes/dayAnalysis";
 import periodAnalysisRouter from "./src/server/routes/periodAnalysis";
+import metaAnalysisRouter from "./src/server/routes/metaAnalysis";
 
 dotenv.config({ path: ".env.local" });
 dotenv.config();
@@ -47,6 +48,7 @@ export async function createExpressApp() {
   app.use("/api", digestMediaRouter);
   app.use("/api", dayAnalysisRouter);
   app.use("/api", periodAnalysisRouter);
+  app.use("/api", metaAnalysisRouter);
 
   return app;
 }
