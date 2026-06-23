@@ -137,7 +137,7 @@ export function recalculateDigestStats(
     });
 
     const rawAvg = detail.msgCount > 0 ? (detail.sentimentSum / detail.msgCount) : 0;
-    const stretchedAvg = Math.max(-1, Math.min(1, rawAvg * 8.0));
+    const stretchedAvg = Math.max(-1, Math.min(1, rawAvg * 12.0));
 
     return {
       dateStr,

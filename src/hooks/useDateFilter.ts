@@ -146,7 +146,7 @@ export function useDateFilter(digest: ChatDigestData) {
     let overallSentimentScore = 0;
     filteredMessages.forEach((m) => (overallSentimentScore += m.sentimentScore));
     const rawAvgOverall = filteredMessages.length > 0 ? overallSentimentScore / filteredMessages.length : 0;
-    const avgOverallSentiment = Math.max(-1, Math.min(1, rawAvgOverall * 8.0));
+    const avgOverallSentiment = Math.max(-1, Math.min(1, rawAvgOverall * 12.0));
     let netSentimentLabel = 'focused and collaborative';
     if (avgOverallSentiment > 0.15) netSentimentLabel = 'exceptionally positive and productive';
     else if (avgOverallSentiment < -0.15) netSentimentLabel = 'somewhat critical and tense';

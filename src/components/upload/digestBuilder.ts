@@ -1,30 +1,6 @@
 import { ChatDigestData, ParsedMessage, ChatDecision, ActionItem, TimelineDataPoint } from '../../types';
 
-const POSITIVE_WORDS = new Set([
-  'agree', 'agreed', 'perfect', 'awesome', 'love', 'great', 'happy', 'thanks', 'thank', 'deal', 'excellent', 'good', 'correct', 'yes', 'absolutely', 'definitely', 'super', 'cool', 'nice', 'brilliant', 'sure', 'fine', 'completed', 'resolved', 'perfectly', 'done', 'approved', 'success'
-]);
-
-const NEGATIVE_WORDS = new Set([
-  'disagree', 'sad', 'wrong', 'fail', 'bad', 'unhappy', 'delay', 'cancel', 'unfortunately', 'error', 'issue', 'problem', 'wait', 'cannot', "can't", "don't", 'no', 'difficult', 'struggle', 'hard', 'concerned', 'concern', 'threat', 'danger', 'risk', 'disappointed', 'stuck', 'blocking', 'refuse'
-]);
-
-function calculateSentiment(text: string): { score: number; type: 'positive' | 'negative' | 'neutral' } {
-  const words = text.toLowerCase().replace(/[^a-z0-9'\s]/g, '').split(/\s+/);
-  let score = 0;
-
-  for (const word of words) {
-    if (POSITIVE_WORDS.has(word)) score += 0.3;
-    if (NEGATIVE_WORDS.has(word)) score -= 0.3;
-  }
-
-  score = Math.max(-1, Math.min(1, score));
-
-  let type: 'positive' | 'negative' | 'neutral' = 'neutral';
-  if (score > 0.1) type = 'positive';
-  else if (score < -0.1) type = 'negative';
-
-  return { score, type };
-}
+import { calculateSentiment } from '../../lib/sentiment';
 
 export function parseRawMediaMessages(
   rawMessages: Array<{ sender: string; text: string; dateStr: string; timeStr: string }>
@@ -133,7 +109,7 @@ export function buildDigestFromMediaData(
     });
 
     const rawAvg = detail.msgCount > 0 ? (detail.sentimentSum / detail.msgCount) : 0;
-    const stretchedAvg = Math.max(-1, Math.min(1, rawAvg * 8.0));
+    const stretchedAvg = Math.max(-1, Math.min(1, rawAvg * 12.0));
 
     return {
       dateStr,
