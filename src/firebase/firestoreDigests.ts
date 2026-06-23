@@ -87,6 +87,17 @@ export async function getFirestoreDigests(): Promise<ChatDigestData[]> {
       console.warn('Failed to retrieve local digests for merge:', e);
     }
 
+    // Background sync: any local digest that is NOT in Firestore should be uploaded
+    for (const localDigest of localDigests) {
+      const existsOnRemote = results.some((r) => r.id === localDigest.id);
+      if (!existsOnRemote) {
+        console.log(`[Firestore] Syncing local-only digest ${localDigest.id} to cloud.`);
+        saveFirestoreDigest(localDigest).catch((err) => {
+          console.warn(`[Firestore] Background sync failed for ${localDigest.id}:`, err);
+        });
+      }
+    }
+
     // Write remote results to IndexedDB, preserving fully-loaded local copies
     for (const d of results) {
       const localCopy = localDigests.find((ld) => ld.id === d.id);
